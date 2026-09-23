@@ -707,6 +707,6 @@ st.markdown(f"""
     margin-top:12px;
     border-top:1px solid #f1f5f9;
 ">
-    © {pd.Timestamp.today().year} Steelworks Power • Fleet Compliance System
+    © {pd.Timestamp.today().year} Steelworks • Fleet Compliance System
 </div>
 """, unsafe_allow_html=True)

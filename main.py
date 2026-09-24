@@ -317,7 +317,7 @@ button[kind="primary"],
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "fleet_data.xlsx"
+EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"     # 👈 CHANGED
 
 COMPLIANCE_SHEETS = {
     "SWPE": "SWPE",
@@ -353,7 +353,12 @@ def load_sheet(sheet):
         try:
             with open(FILE_PATH, "rb") as f:
                 data = f.read()
-            df = pd.read_excel(io.BytesIO(data), sheet_name=sheet, header=0)
+            df = pd.read_excel(
+                io.BytesIO(data),
+                sheet_name=sheet,
+                header=0,
+                engine="openpyxl",           # 👈 CHANGED — required for .xlsm
+            )
             df.columns = df.columns.str.strip()
             return df
         except PermissionError:
@@ -373,7 +378,7 @@ def load_hyperlinks(sheet):
     try:
         with open(FILE_PATH, "rb") as f:
             data = f.read()
-        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False)
+        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False, keep_vba=True)
         ws = wb[sheet]
 
         links = {}
@@ -707,6 +712,6 @@ st.markdown(f"""
     margin-top:12px;
     border-top:1px solid #f1f5f9;
 ">
-    © {pd.Timestamp.today().year} Steelworks • Fleet Compliance System
+    © {pd.Timestamp.now().year} Steelworks • Fleet Compliance System
 </div>
 """, unsafe_allow_html=True)

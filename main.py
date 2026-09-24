@@ -177,7 +177,6 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid #e2e8f0;
 }
 
-/* Sidebar heading */
 section[data-testid="stSidebar"] h3 {
     font-size: 18px !important;
     font-weight: 800 !important;
@@ -190,7 +189,6 @@ section[data-testid="stSidebar"] h3 {
     display: inline-block;
 }
 
-/* Sidebar labels */
 section[data-testid="stSidebar"] label {
     font-size: 11px !important;
     font-weight: 700 !important;
@@ -241,7 +239,6 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="tr
     box-shadow: 0 4px 12px rgba(14,165,233,0.3) !important;
 }
 
-/* Hide radio circle */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child * {
     display: none !important;
@@ -265,6 +262,21 @@ section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover {
     border-color: #0ea5e9 !important;
     box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
+}
+
+/* ============ TEXT INPUT IN SIDEBAR (search) ============ */
+section[data-testid="stSidebar"] input[type="text"] {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    color: #0f172a !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+section[data-testid="stSidebar"] input[type="text"]:focus {
+    border-color: #0ea5e9 !important;
+    box-shadow: 0 0 0 3px rgba(14,165,233,0.15) !important;
 }
 
 /* ============ RESET BUTTON ============ */
@@ -317,7 +329,7 @@ button[kind="primary"],
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"     # 👈 CHANGED
+EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
 
 COMPLIANCE_SHEETS = {
     "SWPE": "SWPE",
@@ -337,6 +349,8 @@ if "dialog_row_idx" not in st.session_state:
     st.session_state.dialog_row_idx = None
 if "table_reset_counter" not in st.session_state:
     st.session_state.table_reset_counter = 0
+if "search_query" not in st.session_state:
+    st.session_state.search_query = ""
 
 
 # ==================================================
@@ -357,7 +371,7 @@ def load_sheet(sheet):
                 io.BytesIO(data),
                 sheet_name=sheet,
                 header=0,
-                engine="openpyxl",           # 👈 CHANGED — required for .xlsm
+                engine="openpyxl",
             )
             df.columns = df.columns.str.strip()
             return df
@@ -449,7 +463,7 @@ DOC_CONFIG = {
 
 
 # ==================================================
-# SIDEBAR — FILTERS
+# SIDEBAR — FILTERS + SEARCH
 # ==================================================
 with st.sidebar:
     logo_path = os.path.join(BASE_DIR, "SteelworksLogo.png")
@@ -459,11 +473,32 @@ with st.sidebar:
 
     st.markdown("### 🔍  Filters")
 
+    # ---------- SEARCH BAR ----------
+    search_query = st.text_input(
+        "🔎 Search Vehicle",
+        value=st.session_state.search_query,
+        placeholder="Enter vehicle no. or name...",
+        key="search_input",
+    )
+    st.session_state.search_query = search_query
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+    # ---------- ENTITY ----------
     entity = st.radio("Select Entity", ["SWPE", "SWIN"], horizontal=True, key="entity_filter")
 
     df_all     = load_sheet(COMPLIANCE_SHEETS[entity])
     hyperlinks = load_hyperlinks(COMPLIANCE_SHEETS[entity])
 
+    # ---------- APPLY SEARCH ----------
+    if search_query.strip():
+        mask = (
+            df_all.iloc[:, 0].astype(str).str.contains(search_query, case=False, na=False) |
+            df_all.iloc[:, 1].astype(str).str.contains(search_query, case=False, na=False)
+        )
+        df_all = df_all[mask]
+
+    # ---------- DOC TYPE ----------
     doc_type = st.selectbox("Document Type", list(DOC_CONFIG.keys()), key="doc_filter")
     cfg = DOC_CONFIG[doc_type]
 
@@ -490,19 +525,43 @@ with st.sidebar:
     month_sel = st.selectbox("Month", ["All"] + list(month_names.values()), key="month_filter")
     month = 0 if month_sel == "All" else [k for k, v in month_names.items() if v == month_sel][0]
 
-    # Apply filters
+    # ---------- APPLY FILTERS ----------
     df_filtered = df_all.copy()
     if year != "All":
         df_filtered = df_filtered[df_filtered["_Year"] == year]
     if month != 0:
         df_filtered = df_filtered[df_filtered["_Month"] == month]
 
+    # ---------- RESULT COUNT ----------
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-top: 12px;
+        text-align: center;
+    ">
+        <div style="font-size: 10px; color:#0369a1; text-transform:uppercase; letter-spacing:1px; font-weight:700;">
+            Results
+        </div>
+        <div style="font-size: 24px; color:#0284c7; font-weight:800; letter-spacing:-0.5px; margin-top:2px;">
+            {len(df_filtered)}
+        </div>
+        <div style="font-size: 11px; color:#64748b; margin-top:2px;">vehicles shown</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     st.divider()
+
+    # ---------- RESET ----------
     if st.button("🔄  Reset", use_container_width=True):
         st.cache_data.clear()
-        st.session_state.dialog_open    = False
-        st.session_state.dialog_row_idx = None
+        st.session_state.dialog_open       = False
+        st.session_state.dialog_row_idx    = None
         st.session_state.table_reset_counter += 1
+        st.session_state.search_query      = ""
         st.rerun()
 
 
@@ -551,6 +610,10 @@ st.subheader(f"📋 {doc_type} Records")
 # ==================================================
 # MAIN TABLE
 # ==================================================
+if len(df_filtered) == 0:
+    st.warning("⚠️ No vehicles match the current filters. Try adjusting the search or filters.")
+    st.stop()
+
 VEH_COL  = df_filtered.columns[0]
 NAME_COL = df_filtered.columns[1]
 
@@ -581,10 +644,17 @@ if event.selection.rows:
 
 
 # ==================================================
-# VEHICLE DETAILS DIALOG
+# VEHICLE DETAILS DIALOG (with safe index check)
 # ==================================================
 if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
-    idx       = st.session_state.dialog_row_idx
+    idx = st.session_state.dialog_row_idx
+
+    # Safety check — verify index is still valid
+    if not isinstance(idx, int) or idx < 0 or idx >= len(df_filtered):
+        st.session_state.dialog_open    = False
+        st.session_state.dialog_row_idx = None
+        st.rerun()
+
     vehicle   = df_filtered.iloc[idx]
     excel_row = idx + 2
 

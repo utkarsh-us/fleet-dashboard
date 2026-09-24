@@ -5,7 +5,11 @@ import re
 import io
 import time
 import datetime
+import warnings
 import openpyxl
+
+# Suppress openpyxl named-range warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # ==================================================
 # PAGE CONFIG
@@ -340,7 +344,6 @@ section[data-testid="stSidebar"] hr {
 }
 section[data-testid="stSidebar"] img { margin-bottom: 4px; }
 
-/* Last updated small text */
 .small-updated {
     text-align: left;
     font-size: 11px;
@@ -372,7 +375,7 @@ button[kind="primary"],
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsx"
+EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"     # ← UPDATED
 
 COMPLIANCE_SHEETS = {
     "SWPE": "SWPE",

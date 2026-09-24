@@ -21,17 +21,12 @@ st.set_page_config(
 # ==================================================
 st.markdown("""
 <style>
-/* ============ GLOBAL PRIMARY COLOR OVERRIDE ============ */
-:root {
-    --primary-color: #0ea5e9 !important;
-}
+:root { --primary-color: #0ea5e9 !important; }
 
-/* ============ FONT ============ */
 html, body, [class*="css"] {
     font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
 }
 
-/* ============ HIDE STREAMLIT CHROME (keep sidebar toggle!) ============ */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header[data-testid="stHeader"] {
@@ -44,7 +39,6 @@ button[data-testid="baseButton-headerNoPadding"] {
     color: #0f172a !important;
 }
 
-/* ============ REMOVE EXTRA BOTTOM SPACE ============ */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 0.5rem !important;
@@ -55,7 +49,6 @@ div[data-testid="stAppViewContainer"] > .main { padding-bottom: 0 !important; }
 .element-container:has(div[data-testid="stDataFrame"]) { margin-bottom: 0 !important; }
 div[data-testid="stDataFrame"] { margin-bottom: 0 !important; }
 
-/* ============ METRIC CARDS ============ */
 [data-testid="stMetric"] {
     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border: 1px solid #e2e8f0;
@@ -81,7 +74,6 @@ div[data-testid="stDataFrame"] { margin-bottom: 0 !important; }
     color: #0f172a !important;
 }
 
-/* ============ POPUP / DIALOG ============ */
 div[data-testid="stDialog"] > div:first-child {
     border-radius: 16px !important;
     box-shadow: 0 20px 60px rgba(0,0,0,0.15) !important;
@@ -157,7 +149,6 @@ div[data-testid="stDialog"] .stLinkButton > a:hover {
     box-shadow: 0 4px 12px rgba(14,165,233,0.3);
 }
 
-/* ============ TABLE ============ */
 div[data-testid="stDataFrame"] {
     border-radius: 12px;
     overflow: hidden;
@@ -171,12 +162,10 @@ div[data-testid="stDataFrame"] input[type="checkbox"] {
     accent-color: #0ea5e9 !important;
 }
 
-/* ============ SIDEBAR ============ */
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #f8fafc 0%, #ffffff 60%, #f8fafc 100%);
     border-right: 1px solid #e2e8f0;
 }
-
 section[data-testid="stSidebar"] h3 {
     font-size: 18px !important;
     font-weight: 800 !important;
@@ -188,7 +177,6 @@ section[data-testid="stSidebar"] h3 {
     border-bottom: 2px solid #0ea5e9;
     display: inline-block;
 }
-
 section[data-testid="stSidebar"] label {
     font-size: 11px !important;
     font-weight: 700 !important;
@@ -197,15 +185,11 @@ section[data-testid="stSidebar"] label {
     letter-spacing: 0.8px;
     margin-bottom: 6px !important;
 }
-
-/* ============ RADIO GROUP — PILL TOGGLE ============ */
 section[data-testid="stSidebar"] div[role="radiogroup"] {
     display: flex;
     gap: 8px;
     margin-top: 4px;
-    --primary-color: #0ea5e9 !important;
 }
-
 section[data-testid="stSidebar"] div[role="radiogroup"] > label {
     flex: 1;
     background: #ffffff;
@@ -224,13 +208,11 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label {
     white-space: nowrap !important;
     overflow: hidden !important;
 }
-
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
     border-color: #0ea5e9 !important;
     background: #f0f9ff !important;
     color: #0284c7 !important;
 }
-
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked),
 section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
@@ -238,7 +220,6 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="tr
     color: #ffffff !important;
     box-shadow: 0 4px 12px rgba(14,165,233,0.3) !important;
 }
-
 section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child * {
     display: none !important;
@@ -246,12 +227,9 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-chil
     height: 0 !important;
     margin: 0 !important;
 }
-
 section[data-testid="stSidebar"] input[type="radio"] {
     display: none !important;
 }
-
-/* ============ SELECTBOXES ============ */
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
@@ -263,8 +241,6 @@ section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover {
     border-color: #0ea5e9 !important;
     box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
 }
-
-/* ============ TEXT INPUT IN SIDEBAR (search) ============ */
 section[data-testid="stSidebar"] input[type="text"] {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
@@ -278,8 +254,6 @@ section[data-testid="stSidebar"] input[type="text"]:focus {
     border-color: #0ea5e9 !important;
     box-shadow: 0 0 0 3px rgba(14,165,233,0.15) !important;
 }
-
-/* ============ RESET BUTTON ============ */
 section[data-testid="stSidebar"] .stButton > button {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
     border: none !important;
@@ -297,25 +271,18 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     box-shadow: 0 8px 20px rgba(14,165,233,0.4) !important;
     background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
 }
-
 section[data-testid="stSidebar"] hr {
     border-color: #e2e8f0 !important;
     margin: 20px 0 !important;
 }
+section[data-testid="stSidebar"] img { margin-bottom: 4px; }
 
-section[data-testid="stSidebar"] img {
-    margin-bottom: 4px;
-}
-
-/* ============ MAIN TITLE ============ */
 h1 {
     font-size: 28px !important;
     font-weight: 800 !important;
     color: #0f172a !important;
     letter-spacing: -0.5px;
 }
-
-/* ============ GLOBAL BUTTON PRIMARY ============ */
 button[kind="primary"],
 .stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
@@ -338,6 +305,15 @@ COMPLIANCE_SHEETS = {
 
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, EXCEL_FILE)
+
+# RC column letter in Excel
+RC_COLUMN_LETTER = "H"
+
+# Your SharePoint base URL — used as fallback for RC
+SHAREPOINT_SEARCH_BASE = (
+    "https://steelworkspower-my.sharepoint.com/personal/"
+    "utkarsh_kashyap_steelworks_in/_layouts/15/onedrive.aspx?q="
+)
 
 
 # ==================================================
@@ -461,8 +437,38 @@ DOC_CONFIG = {
                   "link": "TP Document Link",        "col": "AL"},
 }
 
-# RC (Registration Certificate) is stored in Column H in your Excel
-RC_COLUMN_LETTER = "H"
+
+# ==================================================
+# RC URL RESOLVER (with fallbacks)
+# ==================================================
+def get_rc_url(hyperlinks, excel_row, vehicle, veh_col):
+    """Return RC URL — try direct link, then native hyperlink, then SharePoint search."""
+    # 1. From pre-loaded hyperlinks dict
+    url = hyperlinks.get(excel_row, {}).get(RC_COLUMN_LETTER)
+    if url:
+        return url
+
+    # 2. Native hyperlink object (re-read fresh)
+    try:
+        with open(FILE_PATH, "rb") as f:
+            _data = f.read()
+        _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=False, keep_vba=True)
+        # Search in both sheets
+        for _sheet_name in COMPLIANCE_SHEETS.values():
+            if _sheet_name in _wb.sheetnames:
+                _ws = _wb[_sheet_name]
+                rc_cell = _ws[f"{RC_COLUMN_LETTER}{excel_row}"]
+                if rc_cell.hyperlink and rc_cell.hyperlink.target:
+                    return rc_cell.hyperlink.target
+    except Exception:
+        pass
+
+    # 3. Fallback: SharePoint search for the vehicle's RC
+    try:
+        veh_no = str(vehicle[veh_col]).strip().replace(" ", "%20")
+        return f"{SHAREPOINT_SEARCH_BASE}RC%20{veh_no}"
+    except Exception:
+        return None
 
 
 # ==================================================
@@ -476,7 +482,6 @@ with st.sidebar:
 
     st.markdown("### 🔍  Filters")
 
-    # ---------- SEARCH BAR ----------
     search_query = st.text_input(
         "🔎 Search Vehicle",
         value=st.session_state.search_query,
@@ -487,13 +492,11 @@ with st.sidebar:
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
-    # ---------- ENTITY ----------
     entity = st.radio("Select Entity", ["SWPE", "SWIN"], horizontal=True, key="entity_filter")
 
     df_all     = load_sheet(COMPLIANCE_SHEETS[entity])
     hyperlinks = load_hyperlinks(COMPLIANCE_SHEETS[entity])
 
-    # ---------- APPLY SEARCH ----------
     if search_query.strip():
         mask = (
             df_all.iloc[:, 0].astype(str).str.contains(search_query, case=False, na=False) |
@@ -501,7 +504,6 @@ with st.sidebar:
         )
         df_all = df_all[mask]
 
-    # ---------- DOC TYPE ----------
     doc_type = st.selectbox("Document Type", list(DOC_CONFIG.keys()), key="doc_filter")
     cfg = DOC_CONFIG[doc_type]
 
@@ -528,14 +530,12 @@ with st.sidebar:
     month_sel = st.selectbox("Month", ["All"] + list(month_names.values()), key="month_filter")
     month = 0 if month_sel == "All" else [k for k, v in month_names.items() if v == month_sel][0]
 
-    # ---------- APPLY FILTERS ----------
     df_filtered = df_all.copy()
     if year != "All":
         df_filtered = df_filtered[df_filtered["_Year"] == year]
     if month != 0:
         df_filtered = df_filtered[df_filtered["_Month"] == month]
 
-    # ---------- RESULT COUNT ----------
     st.markdown(f"""
     <div style="
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
@@ -558,7 +558,6 @@ with st.sidebar:
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     st.divider()
 
-    # ---------- RESET ----------
     if st.button("🔄  Reset", use_container_width=True):
         st.cache_data.clear()
         st.session_state.dialog_open       = False
@@ -647,7 +646,7 @@ if event.selection.rows:
 
 
 # ==================================================
-# VEHICLE DETAILS DIALOG (with RC + safe index)
+# VEHICLE DETAILS DIALOG
 # ==================================================
 if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
     idx = st.session_state.dialog_row_idx
@@ -727,8 +726,9 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
         with right:
             st.markdown("### 📄 Documents")
 
-            # ---------- RC (Registration Certificate) FIRST ----------
-            rc_url = hyperlinks.get(excel_row, {}).get(RC_COLUMN_LETTER)
+            # ---------- RC FIRST ----------
+            rc_url = get_rc_url(hyperlinks, excel_row, vehicle, VEH_COL)
+
             if rc_url:
                 st.link_button("📋   View RC", rc_url, use_container_width=True)
             else:

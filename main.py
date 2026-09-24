@@ -306,10 +306,10 @@ COMPLIANCE_SHEETS = {
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, EXCEL_FILE)
 
-# RC column letter in Excel
+# Column letters in Excel
 RC_COLUMN_LETTER = "H"
 
-# Your SharePoint base URL — used as fallback for RC
+# SharePoint search fallback
 SHAREPOINT_SEARCH_BASE = (
     "https://steelworkspower-my.sharepoint.com/personal/"
     "utkarsh_kashyap_steelworks_in/_layouts/15/onedrive.aspx?q="
@@ -425,48 +425,66 @@ def status_icon(days):
 # DOC CONFIG
 # ==================================================
 DOC_CONFIG = {
-    "Insurance": {"expiry": "Insurance End Date",  "days": "Insurance Days Left",
-                  "link": "Insurance Document Link", "col": "Q"},
-    "Fitness":   {"expiry": "Fitness Expiry Date", "days": "Fitness Days Left",
-                  "link": "Fitness Document Link",   "col": "V"},
-    "MV Tax":    {"expiry": "MV Tax Expiry Date",  "days": "MV Tax Days Left",
-                  "link": "MV Tax Document Link",    "col": "AA"},
-    "Permit":    {"expiry": "Permit Expiry Date",  "days": "Permit Days Left",
-                  "link": "Permit Document Link",    "col": "AE"},
-    "TP":        {"expiry": "TP Expiry Date",      "days": "TP Days Left",
-                  "link": "TP Document Link",        "col": "AL"},
+    "Insurance": {
+        "expiry": "Insurance End Date",
+        "days":   "Insurance Days Left",
+        "link":   "Insurance Document Link",
+        "col":    "Q",
+    },
+    "Fitness": {
+        "expiry": "Fitness Expiry Date",
+        "days":   "Fitness Days Left",
+        "link":   "Fitness Document Link",
+        "col":    "V",
+    },
+    "MV Tax": {
+        "expiry": "MV Tax Expiry Date",
+        "days":   "MV Tax Days Left",
+        "link":   "MV Tax Document Link",
+        "col":    "AA",
+    },
+    "Permit": {
+        "expiry": "Permit Expiry Date",
+        "days":   "Permit Days Left",
+        "link":   "Permit Document Link",
+        "col":    "AE",
+    },
+    "TP": {
+        "expiry": "TP Expiry Date",
+        "days":   "TP Days Left",
+        "link":   "TP Document Link",
+        "col":    "AL",
+    },
 }
 
 
 # ==================================================
-# RC URL RESOLVER (with fallbacks)
+# UNIVERSAL DOC URL RESOLVER
 # ==================================================
-def get_rc_url(hyperlinks, excel_row, vehicle, veh_col):
-    """Return RC URL — try direct link, then native hyperlink, then SharePoint search."""
-    # 1. From pre-loaded hyperlinks dict
-    url = hyperlinks.get(excel_row, {}).get(RC_COLUMN_LETTER)
+def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col):
+    # 1. From pre-loaded hyperlinks
+    url = hyperlinks.get(excel_row, {}).get(col_letter)
     if url:
         return url
 
-    # 2. Native hyperlink object (re-read fresh)
+    # 2. Re-read fresh for native hyperlink
     try:
         with open(FILE_PATH, "rb") as f:
             _data = f.read()
         _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=False, keep_vba=True)
-        # Search in both sheets
         for _sheet_name in COMPLIANCE_SHEETS.values():
             if _sheet_name in _wb.sheetnames:
                 _ws = _wb[_sheet_name]
-                rc_cell = _ws[f"{RC_COLUMN_LETTER}{excel_row}"]
-                if rc_cell.hyperlink and rc_cell.hyperlink.target:
-                    return rc_cell.hyperlink.target
+                cell = _ws[f"{col_letter}{excel_row}"]
+                if cell.hyperlink and cell.hyperlink.target:
+                    return cell.hyperlink.target
     except Exception:
         pass
 
-    # 3. Fallback: SharePoint search for the vehicle's RC
+    # 3. SharePoint search fallback
     try:
         veh_no = str(vehicle[veh_col]).strip().replace(" ", "%20")
-        return f"{SHAREPOINT_SEARCH_BASE}RC%20{veh_no}"
+        return f"{SHAREPOINT_SEARCH_BASE}{doc_label}%20{veh_no}"
     except Exception:
         return None
 
@@ -726,31 +744,32 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
         with right:
             st.markdown("### 📄 Documents")
 
-            # ---------- RC FIRST ----------
-            rc_url = get_rc_url(hyperlinks, excel_row, vehicle, VEH_COL)
-
+            # ---------- RC ----------
+            rc_url = get_doc_url("RC", RC_COLUMN_LETTER, hyperlinks, excel_row, vehicle, VEH_COL)
             if rc_url:
                 st.link_button("📋   View RC", rc_url, use_container_width=True)
             else:
-                st.button(
-                    "❌   RC — No file",
-                    disabled=True,
-                    use_container_width=True,
-                    key=f"nodoc_rc_{idx}",
-                )
+                st.button("❌   RC — No file", disabled=True,
+                          use_container_width=True, key=f"nodoc_rc_{idx}")
 
-            # ---------- Other documents ----------
+            # ---------- All other documents ----------
             for doc_name, doc_cfg in DOC_CONFIG.items():
-                url = hyperlinks.get(excel_row, {}).get(doc_cfg["col"])
-                if url:
-                    st.link_button(f"📄   View {doc_name}", url, use_container_width=True)
+                doc_url = get_doc_url(
+                    doc_name,
+                    doc_cfg["col"],
+                    hyperlinks,
+                    excel_row,
+                    vehicle,
+                    VEH_COL,
+                )
+                if doc_url:
+                    st.link_button(f"📄   View {doc_name}", doc_url,
+                                   use_container_width=True)
                 else:
-                    st.button(
-                        f"❌   {doc_name} — No file",
-                        disabled=True,
-                        use_container_width=True,
-                        key=f"nodoc_{doc_name}_{idx}",
-                    )
+                    st.button(f"❌   {doc_name} — No file",
+                              disabled=True,
+                              use_container_width=True,
+                              key=f"nodoc_{doc_name}_{idx}")
 
         st.markdown("""
         <div style="

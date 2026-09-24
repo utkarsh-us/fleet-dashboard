@@ -4,6 +4,7 @@ import os
 import re
 import io
 import time
+import datetime
 import openpyxl
 
 # ==================================================
@@ -15,6 +16,68 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ==================================================
+# PASSWORD PROTECTION
+# ==================================================
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == st.secrets.get("password", "admin"):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        st.markdown("""
+        <style>
+        .login-box {
+            max-width: 400px;
+            margin: 80px auto;
+            padding: 40px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(15,23,42,0.15);
+            border: 1px solid #e2e8f0;
+        }
+        .login-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+        .login-title { text-align: center; font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 8px; letter-spacing: -0.5px; }
+        .login-sub { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 28px; }
+        </style>
+        <div class="login-box">
+            <div class="login-icon">🔒</div>
+            <div class="login-title">Fleet Compliance</div>
+            <div class="login-sub">Enter password to access the dashboard</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.text_input("Password", type="password",
+                          on_change=password_entered,
+                          key="password",
+                          label_visibility="collapsed",
+                          placeholder="Enter password...")
+            if st.session_state.get("password_correct") is False:
+                st.error("❌ Incorrect password")
+        return False
+    elif st.session_state["password_correct"]:
+        return True
+    else:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.text_input("Password", type="password",
+                          on_change=password_entered,
+                          key="password",
+                          label_visibility="collapsed",
+                          placeholder="Enter password...")
+            st.error("❌ Incorrect password")
+        return False
+
+
+if not check_password():
+    st.stop()
+
 
 # ==================================================
 # CSS
@@ -277,6 +340,19 @@ section[data-testid="stSidebar"] hr {
 }
 section[data-testid="stSidebar"] img { margin-bottom: 4px; }
 
+/* Last updated small text */
+.small-updated {
+    text-align: left;
+    font-size: 11px;
+    color: #94a3b8;
+    padding: 12px 0 0 0;
+    letter-spacing: 0.3px;
+}
+.small-updated strong {
+    color: #64748b;
+    font-weight: 600;
+}
+
 h1 {
     font-size: 28px !important;
     font-weight: 800 !important;
@@ -296,7 +372,7 @@ button[kind="primary"],
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
+EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsx"
 
 COMPLIANCE_SHEETS = {
     "SWPE": "SWPE",
@@ -327,6 +403,16 @@ if "table_reset_counter" not in st.session_state:
     st.session_state.table_reset_counter = 0
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
+
+
+# ==================================================
+# LAST UPDATED HELPER
+# ==================================================
+def get_last_updated():
+    if not os.path.exists(FILE_PATH):
+        return None
+    mtime = os.path.getmtime(FILE_PATH)
+    return datetime.datetime.fromtimestamp(mtime)
 
 
 # ==================================================
@@ -368,7 +454,7 @@ def load_hyperlinks(sheet):
     try:
         with open(FILE_PATH, "rb") as f:
             data = f.read()
-        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False, keep_vba=True)
+        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False)
         ws = wb[sheet]
 
         links = {}
@@ -471,7 +557,7 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col):
     try:
         with open(FILE_PATH, "rb") as f:
             _data = f.read()
-        _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=False, keep_vba=True)
+        _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=False)
         for _sheet_name in COMPLIANCE_SHEETS.values():
             if _sheet_name in _wb.sheetnames:
                 _ws = _wb[_sheet_name]
@@ -583,6 +669,15 @@ with st.sidebar:
         st.session_state.table_reset_counter += 1
         st.session_state.search_query      = ""
         st.rerun()
+
+    # ---- LAST UPDATED ----
+    _dt = get_last_updated()
+    if _dt is not None:
+        st.markdown(
+            f'<div class="small-updated">Last updated<br>'
+            f'<strong>{_dt.strftime("%d %b %Y, %I:%M %p")}</strong></div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ==================================================

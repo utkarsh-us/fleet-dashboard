@@ -461,6 +461,9 @@ DOC_CONFIG = {
                   "link": "TP Document Link",        "col": "AL"},
 }
 
+# RC (Registration Certificate) is stored in Column H in your Excel
+RC_COLUMN_LETTER = "H"
+
 
 # ==================================================
 # SIDEBAR — FILTERS + SEARCH
@@ -532,6 +535,28 @@ with st.sidebar:
     if month != 0:
         df_filtered = df_filtered[df_filtered["_Month"] == month]
 
+    # ---------- RESULT COUNT ----------
+    st.markdown(f"""
+    <div style="
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-top: 12px;
+        text-align: center;
+    ">
+        <div style="font-size: 10px; color:#0369a1; text-transform:uppercase; letter-spacing:1px; font-weight:700;">
+            Results
+        </div>
+        <div style="font-size: 24px; color:#0284c7; font-weight:800; letter-spacing:-0.5px; margin-top:2px;">
+            {len(df_filtered)}
+        </div>
+        <div style="font-size: 11px; color:#64748b; margin-top:2px;">vehicles shown</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.divider()
 
     # ---------- RESET ----------
     if st.button("🔄  Reset", use_container_width=True):
@@ -622,12 +647,11 @@ if event.selection.rows:
 
 
 # ==================================================
-# VEHICLE DETAILS DIALOG (with safe index check)
+# VEHICLE DETAILS DIALOG (with RC + safe index)
 # ==================================================
 if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
     idx = st.session_state.dialog_row_idx
 
-    # Safety check — verify index is still valid
     if not isinstance(idx, int) or idx < 0 or idx >= len(df_filtered):
         st.session_state.dialog_open    = False
         st.session_state.dialog_row_idx = None
@@ -702,6 +726,20 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
 
         with right:
             st.markdown("### 📄 Documents")
+
+            # ---------- RC (Registration Certificate) FIRST ----------
+            rc_url = hyperlinks.get(excel_row, {}).get(RC_COLUMN_LETTER)
+            if rc_url:
+                st.link_button("📋   View RC", rc_url, use_container_width=True)
+            else:
+                st.button(
+                    "❌   RC — No file",
+                    disabled=True,
+                    use_container_width=True,
+                    key=f"nodoc_rc_{idx}",
+                )
+
+            # ---------- Other documents ----------
             for doc_name, doc_cfg in DOC_CONFIG.items():
                 url = hyperlinks.get(excel_row, {}).get(doc_cfg["col"])
                 if url:

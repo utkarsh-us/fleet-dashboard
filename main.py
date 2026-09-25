@@ -151,32 +151,6 @@ button[kind="primary"], .stButton > button[kind="primary"] {
     border-color: #0ea5e9 !important;
     color: #ffffff !important;
 }
-
-/* View button in table rows */
-div[data-testid="stButton"] > button.view-btn {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 6px !important;
-    padding: 4px 14px !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    min-height: 28px !important;
-    height: 28px !important;
-    transition: all 0.15s ease !important;
-    box-shadow: 0 2px 6px rgba(14,165,233,0.25) !important;
-}
-div[data-testid="stButton"] > button.view-btn:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(14,165,233,0.4) !important;
-    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-}
-
-/* Table row separators */
-.row-sep {
-    margin: 2px 0;
-    border-color: #f1f5f9;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -184,7 +158,7 @@ div[data-testid="stButton"] > button.view-btn:hover {
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
+EXCEL_FILE = "data.xlsx"
 
 COMPLIANCE_SHEETS_ATTEMPT = {
     "SWPE": ["SWPE", "swpe", "Swpe", "SWPE ", " SWPE"],
@@ -429,53 +403,6 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
 
 
 # ==================================================
-# MATRIX BUILDER
-# ==================================================
-def build_matrix(df):
-    today = pd.Timestamp.today().normalize()
-    rows = []
-
-    for _, row in df.iterrows():
-        veh_no   = row.get(df.columns[0], "")
-        veh_name = row.get(df.columns[1], "")
-
-        rc_status = "⚪ N/A"
-        if "RC Valid Upto" in df.columns:
-            rc_val = row.get("RC Valid Upto")
-            if pd.notna(rc_val):
-                try:
-                    rc_exp = pd.to_datetime(rc_val)
-                    days = (rc_exp - today).days
-                    if days < 0: rc_status = "🔴 EXPIRED"
-                    elif days <= 30: rc_status = "🟡 EXPIRING"
-                    else: rc_status = "🟢 ACTIVE"
-                except Exception:
-                    pass
-
-        entry = {"Vehicle No": veh_no, "Vehicle Name": veh_name, "RC": rc_status}
-
-        for doc_name, cfg in DOC_CONFIG.items():
-            col = cfg["expiry"]
-            status = "⚪ N/A"
-            if col in df.columns:
-                val = row.get(col)
-                if pd.notna(val):
-                    try:
-                        exp = pd.to_datetime(val)
-                        days = (exp - today).days
-                        if days < 0: status = "🔴 EXPIRED"
-                        elif days <= 30: status = "🟡 EXPIRING"
-                        else: status = "🟢 ACTIVE"
-                    except Exception:
-                        pass
-            entry[doc_name] = status
-
-        rows.append(entry)
-
-    return pd.DataFrame(rows)
-
-
-# ==================================================
 # SIDEBAR
 # ==================================================
 with st.sidebar:
@@ -603,34 +530,7 @@ st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
 
 # ==================================================
-# 🎯 MATRIX VIEW
-# ==================================================
-st.subheader("🎯 Document Matrix — All Documents per Vehicle")
-st.caption("🟢 ACTIVE (>30 days) · 🟡 EXPIRING (≤30 days) · 🔴 EXPIRED · ⚪ N/A")
-
-matrix_df = build_matrix(df_filtered)
-st.dataframe(
-    matrix_df,
-    use_container_width=True,
-    hide_index=True,
-    column_config={
-        "Vehicle No":   st.column_config.TextColumn("Vehicle No", width="medium"),
-        "Vehicle Name": st.column_config.TextColumn("Vehicle Name", width="medium"),
-        "RC":           st.column_config.TextColumn("RC", width="small"),
-        "Insurance":    st.column_config.TextColumn("Insurance", width="small"),
-        "Fitness":      st.column_config.TextColumn("Fitness", width="small"),
-        "MV Tax":       st.column_config.TextColumn("MV Tax", width="small"),
-        "Permit":       st.column_config.TextColumn("Permit", width="small"),
-        "TP":           st.column_config.TextColumn("TP", width="small"),
-    },
-)
-
-st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-st.divider()
-
-
-# ==================================================
-# 📅 MONTHLY DUE DATE BREAKDOWN (clickable)
+# 📅 MONTHLY DUE DATE BREAKDOWN
 # ==================================================
 st.subheader("📅 Monthly Due Date Breakdown")
 st.caption(f"Due date = Expiry Date − {DUE_DATE_ADVANCE_DAYS} days · Click any month to see the vehicle list")
@@ -661,6 +561,7 @@ else:
                     st.session_state.selected_month = (item["year"], item["month"])
                     st.rerun()
 
+    # ---------- Drill-down ----------
     if st.session_state.selected_month is not None:
         sel_year, sel_month = st.session_state.selected_month
         sel_data = next((m for m in monthly if m["year"] == sel_year and m["month"] == sel_month), None)
@@ -697,7 +598,7 @@ st.divider()
 
 
 # ==================================================
-# MAIN TABLE — with 🔍 View button per row
+# MAIN TABLE — Insurance Records / Fitness Records etc.
 # ==================================================
 st.subheader(f"📋 {doc_type} Records")
 
@@ -716,7 +617,7 @@ display_df.columns = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left"][
 display_df["Days Left"] = pd.to_numeric(display_df["Days Left"], errors="coerce")
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
 
-# Header row
+# Header
 header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 header_cols[0].markdown("**Vehicle No**")
 header_cols[1].markdown("**Vehicle Name**")
@@ -727,7 +628,7 @@ header_cols[5].markdown("**Action**")
 
 st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
 
-# Each row with a 🔍 View button at the end
+# Rows
 for i, row in display_df.iterrows():
     cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 
@@ -754,7 +655,7 @@ for i, row in display_df.iterrows():
             st.session_state.dialog_open    = True
             st.rerun()
 
-    st.markdown("<hr class='row-sep'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin:2px 0; border-color:#f1f5f9;'>", unsafe_allow_html=True)
 
 
 # ==================================================
@@ -763,7 +664,6 @@ for i, row in display_df.iterrows():
 if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
     veh_no_clicked = str(st.session_state.dialog_vehicle).strip().upper()
 
-    # Find the vehicle in the filtered data
     match_rows = df_filtered[
         df_filtered[VEH_COL].astype(str).str.strip().str.upper() == veh_no_clicked
     ]
@@ -775,7 +675,7 @@ if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
 
     vehicle = match_rows.iloc[0]
 
-    # Find the Excel row for this vehicle
+    # Find excel row
     excel_row = None
     try:
         with open(FILE_PATH, "rb") as f:

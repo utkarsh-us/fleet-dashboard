@@ -152,25 +152,30 @@ button[kind="primary"], .stButton > button[kind="primary"] {
     color: #ffffff !important;
 }
 
-/* Month card buttons */
-div[data-testid="stButton"] > button.month-card-btn {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-    color: #0f172a !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 14px !important;
-    padding: 16px 18px !important;
+/* View button in table rows */
+div[data-testid="stButton"] > button.view-btn {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 4px 14px !important;
+    font-size: 12px !important;
     font-weight: 600 !important;
-    text-align: left !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-    height: auto !important;
-    white-space: pre-wrap !important;
-    line-height: 1.6 !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    transition: all 0.15s ease !important;
+    box-shadow: 0 2px 6px rgba(14,165,233,0.25) !important;
 }
-div[data-testid="stButton"] > button.month-card-btn:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 20px rgba(15,23,42,0.12) !important;
-    border-color: #0ea5e9 !important;
+div[data-testid="stButton"] > button.view-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(14,165,233,0.4) !important;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+}
+
+/* Table row separators */
+.row-sep {
+    margin: 2px 0;
+    border-color: #f1f5f9;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -212,10 +217,8 @@ DUE_DATE_ADVANCE_DAYS = 10
 # ==================================================
 if "dialog_open" not in st.session_state:
     st.session_state.dialog_open = False
-if "dialog_row_idx" not in st.session_state:
-    st.session_state.dialog_row_idx = None
-if "table_reset_counter" not in st.session_state:
-    st.session_state.table_reset_counter = 0
+if "dialog_vehicle" not in st.session_state:
+    st.session_state.dialog_vehicle = None
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
 if "selected_month" not in st.session_state:
@@ -368,7 +371,7 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, 
 
 
 # ==================================================
-# MONTHLY SUMMARY — due date (expiry - N days)
+# MONTHLY SUMMARY
 # ==================================================
 def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAYS):
     today = pd.Timestamp.today().normalize()
@@ -413,7 +416,6 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
             if summary[key]["days_left_min"] is None or days_left < summary[key]["days_left_min"]:
                 summary[key]["days_left_min"] = days_left
 
-            # Collect per-item details for drill-down
             summary[key]["items"].append({
                 "Vehicle No": row.get(df.columns[0], ""),
                 "Vehicle Name": row.get(df.columns[1], ""),
@@ -424,6 +426,53 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
             })
 
     return [summary[k] for k in sorted(summary.keys())]
+
+
+# ==================================================
+# MATRIX BUILDER
+# ==================================================
+def build_matrix(df):
+    today = pd.Timestamp.today().normalize()
+    rows = []
+
+    for _, row in df.iterrows():
+        veh_no   = row.get(df.columns[0], "")
+        veh_name = row.get(df.columns[1], "")
+
+        rc_status = "⚪ N/A"
+        if "RC Valid Upto" in df.columns:
+            rc_val = row.get("RC Valid Upto")
+            if pd.notna(rc_val):
+                try:
+                    rc_exp = pd.to_datetime(rc_val)
+                    days = (rc_exp - today).days
+                    if days < 0: rc_status = "🔴 EXPIRED"
+                    elif days <= 30: rc_status = "🟡 EXPIRING"
+                    else: rc_status = "🟢 ACTIVE"
+                except Exception:
+                    pass
+
+        entry = {"Vehicle No": veh_no, "Vehicle Name": veh_name, "RC": rc_status}
+
+        for doc_name, cfg in DOC_CONFIG.items():
+            col = cfg["expiry"]
+            status = "⚪ N/A"
+            if col in df.columns:
+                val = row.get(col)
+                if pd.notna(val):
+                    try:
+                        exp = pd.to_datetime(val)
+                        days = (exp - today).days
+                        if days < 0: status = "🔴 EXPIRED"
+                        elif days <= 30: status = "🟡 EXPIRING"
+                        else: status = "🟢 ACTIVE"
+                    except Exception:
+                        pass
+            entry[doc_name] = status
+
+        rows.append(entry)
+
+    return pd.DataFrame(rows)
 
 
 # ==================================================
@@ -508,11 +557,10 @@ with st.sidebar:
 
     if st.button("🔄  Reset", use_container_width=True):
         st.cache_data.clear()
-        st.session_state.dialog_open       = False
-        st.session_state.dialog_row_idx    = None
-        st.session_state.table_reset_counter += 1
-        st.session_state.search_query      = ""
-        st.session_state.selected_month    = None
+        st.session_state.dialog_open    = False
+        st.session_state.dialog_vehicle = None
+        st.session_state.search_query   = ""
+        st.session_state.selected_month = None
         st.rerun()
 
     _dt = get_last_updated()
@@ -555,6 +603,33 @@ st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
 
 # ==================================================
+# 🎯 MATRIX VIEW
+# ==================================================
+st.subheader("🎯 Document Matrix — All Documents per Vehicle")
+st.caption("🟢 ACTIVE (>30 days) · 🟡 EXPIRING (≤30 days) · 🔴 EXPIRED · ⚪ N/A")
+
+matrix_df = build_matrix(df_filtered)
+st.dataframe(
+    matrix_df,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "Vehicle No":   st.column_config.TextColumn("Vehicle No", width="medium"),
+        "Vehicle Name": st.column_config.TextColumn("Vehicle Name", width="medium"),
+        "RC":           st.column_config.TextColumn("RC", width="small"),
+        "Insurance":    st.column_config.TextColumn("Insurance", width="small"),
+        "Fitness":      st.column_config.TextColumn("Fitness", width="small"),
+        "MV Tax":       st.column_config.TextColumn("MV Tax", width="small"),
+        "Permit":       st.column_config.TextColumn("Permit", width="small"),
+        "TP":           st.column_config.TextColumn("TP", width="small"),
+    },
+)
+
+st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+st.divider()
+
+
+# ==================================================
 # 📅 MONTHLY DUE DATE BREAKDOWN (clickable)
 # ==================================================
 st.subheader("📅 Monthly Due Date Breakdown")
@@ -574,16 +649,11 @@ else:
             with col_widget:
                 days = item["days_left_min"] if item["days_left_min"] is not None else 999
 
-                if days < 0:
-                    icon = "🔴"
-                elif days <= 30:
-                    icon = "🟡"
-                else:
-                    icon = "🟢"
+                if days < 0: icon = "🔴"
+                elif days <= 30: icon = "🟡"
+                else: icon = "🟢"
 
-                # Build doc pills text
                 pills_text = " · ".join(f"{count} {doc}" for doc, count in item["docs"].items())
-
                 btn_label = f"{icon}  {item['month_name']}   ({item['total']})\n{pills_text}"
 
                 key = f"month_{item['year']}_{item['month']}"
@@ -591,14 +661,9 @@ else:
                     st.session_state.selected_month = (item["year"], item["month"])
                     st.rerun()
 
-    # ---------- Drill-down for the selected month ----------
     if st.session_state.selected_month is not None:
         sel_year, sel_month = st.session_state.selected_month
-
-        sel_data = next(
-            (m for m in monthly if m["year"] == sel_year and m["month"] == sel_month),
-            None,
-        )
+        sel_data = next((m for m in monthly if m["year"] == sel_year and m["month"] == sel_month), None)
 
         if sel_data:
             st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
@@ -632,7 +697,7 @@ st.divider()
 
 
 # ==================================================
-# MAIN TABLE
+# MAIN TABLE — with 🔍 View button per row
 # ==================================================
 st.subheader(f"📋 {doc_type} Records")
 
@@ -648,40 +713,85 @@ available    = [c for c in display_cols if c in df_filtered.columns]
 
 display_df = df_filtered[available].copy()
 display_df.columns = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left"][:len(available)]
+display_df["Days Left"] = pd.to_numeric(display_df["Days Left"], errors="coerce")
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
-display_df = display_df[["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left", "Status"]]
 
-event = st.dataframe(
-    display_df,
-    use_container_width=True,
-    hide_index=True,
-    on_select="rerun",
-    selection_mode="single-row",
-    key=f"main_table_{st.session_state.table_reset_counter}",
-    column_config={
-        "Days Left":   st.column_config.NumberColumn("Days Left", format="%d"),
-        "Expiry Date": st.column_config.DateColumn("Expiry Date", format="DD-MMM-YYYY"),
-    },
-)
+# Header row
+header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
+header_cols[0].markdown("**Vehicle No**")
+header_cols[1].markdown("**Vehicle Name**")
+header_cols[2].markdown("**Expiry Date**")
+header_cols[3].markdown("**Days Left**")
+header_cols[4].markdown("**Status**")
+header_cols[5].markdown("**Action**")
 
-if event.selection.rows:
-    st.session_state.dialog_row_idx = event.selection.rows[0]
-    st.session_state.dialog_open    = True
+st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
+
+# Each row with a 🔍 View button at the end
+for i, row in display_df.iterrows():
+    cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
+
+    cols[0].write(row["Vehicle No"])
+    cols[1].write(row["Vehicle Name"])
+
+    exp_val = row["Expiry Date"]
+    if pd.notna(exp_val):
+        try:
+            cols[2].write(pd.to_datetime(exp_val).strftime("%d-%b-%Y"))
+        except Exception:
+            cols[2].write(str(exp_val))
+    else:
+        cols[2].write("—")
+
+    dl = row["Days Left"]
+    cols[3].write(int(dl) if pd.notna(dl) else "—")
+    cols[4].write(row["Status"])
+
+    with cols[5]:
+        btn_key = f"view_{entity}_{i}_{row['Vehicle No']}"
+        if st.button("🔍 View", key=btn_key, use_container_width=True):
+            st.session_state.dialog_vehicle = row["Vehicle No"]
+            st.session_state.dialog_open    = True
+            st.rerun()
+
+    st.markdown("<hr class='row-sep'>", unsafe_allow_html=True)
 
 
 # ==================================================
 # VEHICLE DETAILS DIALOG
 # ==================================================
-if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
-    idx = st.session_state.dialog_row_idx
+if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
+    veh_no_clicked = str(st.session_state.dialog_vehicle).strip().upper()
 
-    if not isinstance(idx, int) or idx < 0 or idx >= len(df_filtered):
+    # Find the vehicle in the filtered data
+    match_rows = df_filtered[
+        df_filtered[VEH_COL].astype(str).str.strip().str.upper() == veh_no_clicked
+    ]
+
+    if match_rows.empty:
         st.session_state.dialog_open    = False
-        st.session_state.dialog_row_idx = None
+        st.session_state.dialog_vehicle = None
         st.rerun()
 
-    vehicle   = df_filtered.iloc[idx]
-    excel_row = idx + 2
+    vehicle = match_rows.iloc[0]
+
+    # Find the Excel row for this vehicle
+    excel_row = None
+    try:
+        with open(FILE_PATH, "rb") as f:
+            _data = f.read()
+        _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=True)
+        _ws = _wb[real_sheet]
+        for r in range(2, _ws.max_row + 1):
+            cell_val = _ws.cell(row=r, column=1).value
+            if cell_val and str(cell_val).strip().upper() == veh_no_clicked:
+                excel_row = r
+                break
+    except Exception:
+        pass
+
+    if excel_row is None:
+        excel_row = 2
 
     @st.dialog(f"🚛  {vehicle.get(NAME_COL, '')}  •  {vehicle[VEH_COL]}", width="large")
     def show_vehicle_details():
@@ -727,7 +837,7 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
                         else:
                             val = f"{val:g}"
                     with (c1 if i % 2 == 0 else c2):
-                        st.text_input(label, str(val), disabled=True, key=f"fld_{i}_{idx}")
+                        st.text_input(label, str(val), disabled=True, key=f"fld_{i}_{veh_no_clicked}")
 
         with right:
             st.markdown("### 📄 Documents")
@@ -737,7 +847,7 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
                 st.link_button("📋   View RC", rc_url, use_container_width=True)
             else:
                 st.button("❌   RC — No file", disabled=True,
-                          use_container_width=True, key=f"nodoc_rc_{idx}")
+                          use_container_width=True, key=f"nodoc_rc_{veh_no_clicked}")
 
             for doc_name, doc_cfg in DOC_CONFIG.items():
                 doc_url = get_doc_url(doc_name, doc_cfg["col"], hyperlinks, excel_row, vehicle, VEH_COL, real_sheet)
@@ -746,7 +856,7 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
                 else:
                     st.button(f"❌   {doc_name} — No file",
                               disabled=True, use_container_width=True,
-                              key=f"nodoc_{doc_name}_{idx}")
+                              key=f"nodoc_{doc_name}_{veh_no_clicked}")
 
         st.markdown("""
         <div style="text-align:center; color:#94a3b8; font-size:11px; padding:16px 0 4px 0; letter-spacing:0.3px;">

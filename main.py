@@ -7,8 +7,8 @@ import time
 import datetime
 import warnings
 import openpyxl
+from openpyxl.utils import get_column_letter
 
-# Suppress openpyxl named-range warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # ==================================================
@@ -22,95 +22,17 @@ st.set_page_config(
 )
 
 # ==================================================
-# PASSWORD PROTECTION
-# ==================================================
-def check_password():
-    def password_entered():
-        if st.session_state["password"] == st.secrets.get("password", "admin"):
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
-
-    if "password_correct" not in st.session_state:
-        st.markdown("""
-        <style>
-        .login-box {
-            max-width: 400px;
-            margin: 80px auto;
-            padding: 40px;
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(15,23,42,0.15);
-            border: 1px solid #e2e8f0;
-        }
-        .login-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
-        .login-title { text-align: center; font-size: 24px; font-weight: 800; color: #0f172a; margin-bottom: 8px; letter-spacing: -0.5px; }
-        .login-sub { text-align: center; font-size: 13px; color: #64748b; margin-bottom: 28px; }
-        </style>
-        <div class="login-box">
-            <div class="login-icon">🔒</div>
-            <div class="login-title">Fleet Compliance</div>
-            <div class="login-sub">Enter password to access the dashboard</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.text_input("Password", type="password",
-                          on_change=password_entered,
-                          key="password",
-                          label_visibility="collapsed",
-                          placeholder="Enter password...")
-            if st.session_state.get("password_correct") is False:
-                st.error("❌ Incorrect password")
-        return False
-    elif st.session_state["password_correct"]:
-        return True
-    else:
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.text_input("Password", type="password",
-                          on_change=password_entered,
-                          key="password",
-                          label_visibility="collapsed",
-                          placeholder="Enter password...")
-            st.error("❌ Incorrect password")
-        return False
-
-
-if not check_password():
-    st.stop()
-
-
-# ==================================================
 # CSS
 # ==================================================
 st.markdown("""
 <style>
 :root { --primary-color: #0ea5e9 !important; }
-
-html, body, [class*="css"] {
-    font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif;
-}
-
+html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif; }
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header[data-testid="stHeader"] {
-    background: transparent !important;
-    box-shadow: none !important;
-}
-button[data-testid="baseButton-headerNoPadding"] {
-    visibility: visible !important;
-    opacity: 1 !important;
-    color: #0f172a !important;
-}
-
-.block-container {
-    padding-top: 2rem !important;
-    padding-bottom: 0.5rem !important;
-    max-width: 100% !important;
-}
+header[data-testid="stHeader"] { background: transparent !important; box-shadow: none !important; }
+button[data-testid="baseButton-headerNoPadding"] { visibility: visible !important; opacity: 1 !important; color: #0f172a !important; }
+.block-container { padding-top: 2rem !important; padding-bottom: 0.5rem !important; max-width: 100% !important; }
 section.main > div { padding-bottom: 0 !important; }
 div[data-testid="stAppViewContainer"] > .main { padding-bottom: 0 !important; }
 .element-container:has(div[data-testid="stDataFrame"]) { margin-bottom: 0 !important; }
@@ -124,22 +46,9 @@ div[data-testid="stDataFrame"] { margin-bottom: 0 !important; }
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-[data-testid="stMetric"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-}
-[data-testid="stMetricLabel"] {
-    font-size: 13px !important;
-    font-weight: 600;
-    color: #64748b !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-[data-testid="stMetricValue"] {
-    font-size: 28px !important;
-    font-weight: 700;
-    color: #0f172a !important;
-}
+[data-testid="stMetric"]:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+[data-testid="stMetricLabel"] { font-size: 13px !important; font-weight: 600; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; }
+[data-testid="stMetricValue"] { font-size: 28px !important; font-weight: 700; color: #0f172a !important; }
 
 div[data-testid="stDialog"] > div:first-child {
     border-radius: 16px !important;
@@ -148,27 +57,9 @@ div[data-testid="stDialog"] > div:first-child {
     background: #ffffff !important;
     padding: 8px 4px !important;
 }
-div[data-testid="stDialog"] h2 {
-    font-size: 20px !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #f1f5f9;
-    margin-bottom: 16px !important;
-}
-div[data-testid="stDialog"] h3 {
-    font-size: 15px !important;
-    font-weight: 700 !important;
-    color: #334155 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin-bottom: 16px !important;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #0ea5e9;
-    display: inline-block;
-}
-div[data-testid="stDialog"] input,
-div[data-testid="stDialog"] textarea {
+div[data-testid="stDialog"] h2 { font-size: 20px !important; font-weight: 700 !important; color: #0f172a !important; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; margin-bottom: 16px !important; }
+div[data-testid="stDialog"] h3 { font-size: 15px !important; font-weight: 700 !important; color: #334155 !important; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 16px !important; padding-bottom: 6px; border-bottom: 2px solid #0ea5e9; display: inline-block; }
+div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea {
     background-color: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
@@ -179,23 +70,9 @@ div[data-testid="stDialog"] textarea {
     -webkit-text-fill-color: #0f172a !important;
     opacity: 1 !important;
 }
-div[data-testid="stDialog"] label {
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    color: #64748b !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px !important;
-}
-div[data-testid="stDialog"] input:disabled {
-    color: #0f172a !important;
-    -webkit-text-fill-color: #0f172a !important;
-    background-color: #f8fafc !important;
-    opacity: 1 !important;
-    cursor: default !important;
-}
-div[data-testid="stDialog"] .stButton > button,
-div[data-testid="stDialog"] .stLinkButton > a {
+div[data-testid="stDialog"] label { font-size: 11px !important; font-weight: 600 !important; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px !important; }
+div[data-testid="stDialog"] input:disabled { color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; background-color: #f8fafc !important; opacity: 1 !important; cursor: default !important; }
+div[data-testid="stDialog"] .stButton > button, div[data-testid="stDialog"] .stLinkButton > a {
     border-radius: 8px !important;
     font-weight: 600 !important;
     font-size: 13px !important;
@@ -207,8 +84,7 @@ div[data-testid="stDialog"] .stLinkButton > a {
     text-align: center !important;
     text-decoration: none !important;
 }
-div[data-testid="stDialog"] .stButton > button:hover,
-div[data-testid="stDialog"] .stLinkButton > a:hover {
+div[data-testid="stDialog"] .stButton > button:hover, div[data-testid="stDialog"] .stLinkButton > a:hover {
     background: #0ea5e9 !important;
     color: #ffffff !important;
     border-color: #0ea5e9 !important;
@@ -216,47 +92,14 @@ div[data-testid="stDialog"] .stLinkButton > a:hover {
     box-shadow: 0 4px 12px rgba(14,165,233,0.3);
 }
 
-div[data-testid="stDataFrame"] {
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-}
-div[data-testid="stDataFrame"] td:first-child {
-    color: #0ea5e9 !important;
-    font-weight: 600 !important;
-}
-div[data-testid="stDataFrame"] input[type="checkbox"] {
-    accent-color: #0ea5e9 !important;
-}
+div[data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+div[data-testid="stDataFrame"] td:first-child { color: #0ea5e9 !important; font-weight: 600 !important; }
+div[data-testid="stDataFrame"] input[type="checkbox"] { accent-color: #0ea5e9 !important; }
 
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 60%, #f8fafc 100%);
-    border-right: 1px solid #e2e8f0;
-}
-section[data-testid="stSidebar"] h3 {
-    font-size: 18px !important;
-    font-weight: 800 !important;
-    color: #0f172a !important;
-    letter-spacing: -0.4px;
-    margin-top: 8px !important;
-    margin-bottom: 20px !important;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #0ea5e9;
-    display: inline-block;
-}
-section[data-testid="stSidebar"] label {
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    color: #64748b !important;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 6px !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-}
+section[data-testid="stSidebar"] { background: linear-gradient(180deg, #f8fafc 0%, #ffffff 60%, #f8fafc 100%); border-right: 1px solid #e2e8f0; }
+section[data-testid="stSidebar"] h3 { font-size: 18px !important; font-weight: 800 !important; color: #0f172a !important; letter-spacing: -0.4px; margin-top: 8px !important; margin-bottom: 20px !important; padding-bottom: 12px; border-bottom: 2px solid #0ea5e9; display: inline-block; }
+section[data-testid="stSidebar"] label { font-size: 11px !important; font-weight: 700 !important; color: #64748b !important; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] { display: flex; gap: 8px; margin-top: 4px; }
 section[data-testid="stSidebar"] div[role="radiogroup"] > label {
     flex: 1;
     background: #ffffff;
@@ -275,73 +118,22 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label {
     white-space: nowrap !important;
     overflow: hidden !important;
 }
-section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
-    border-color: #0ea5e9 !important;
-    background: #f0f9ff !important;
-    color: #0284c7 !important;
-}
-section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked),
-section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] {
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover { border-color: #0ea5e9 !important; background: #f0f9ff !important; color: #0284c7 !important; }
+section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked), section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
     border-color: #0ea5e9 !important;
     color: #ffffff !important;
     box-shadow: 0 4px 12px rgba(14,165,233,0.3) !important;
 }
-section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child,
-section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child * {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-}
-section[data-testid="stSidebar"] input[type="radio"] {
-    display: none !important;
-}
-section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    transition: all 0.18s ease;
-    font-weight: 500;
-}
-section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover {
-    border-color: #0ea5e9 !important;
-    box-shadow: 0 0 0 3px rgba(14,165,233,0.1);
-}
-section[data-testid="stSidebar"] input[type="text"] {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    color: #0f172a !important;
-    font-size: 14px !important;
-    padding: 10px 14px !important;
-    -webkit-text-fill-color: #0f172a !important;
-}
-section[data-testid="stSidebar"] input[type="text"]:focus {
-    border-color: #0ea5e9 !important;
-    box-shadow: 0 0 0 3px rgba(14,165,233,0.15) !important;
-}
-section[data-testid="stSidebar"] .stButton > button {
-    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
-    border: none !important;
-    color: #ffffff !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    font-size: 13px !important;
-    padding: 12px 16px !important;
-    letter-spacing: 0.3px;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 4px 12px rgba(14,165,233,0.25);
-}
-section[data-testid="stSidebar"] .stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(14,165,233,0.4) !important;
-    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-}
-section[data-testid="stSidebar"] hr {
-    border-color: #e2e8f0 !important;
-    margin: 20px 0 !important;
-}
+section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child, section[data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child * { display: none !important; width: 0 !important; height: 0 !important; margin: 0 !important; }
+section[data-testid="stSidebar"] input[type="radio"] { display: none !important; }
+section[data-testid="stSidebar"] div[data-baseweb="select"] > div { background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 10px !important; transition: all 0.18s ease; font-weight: 500; }
+section[data-testid="stSidebar"] div[data-baseweb="select"] > div:hover { border-color: #0ea5e9 !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+section[data-testid="stSidebar"] input[type="text"] { background: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 10px !important; color: #0f172a !important; font-size: 14px !important; padding: 10px 14px !important; -webkit-text-fill-color: #0f172a !important; }
+section[data-testid="stSidebar"] input[type="text"]:focus { border-color: #0ea5e9 !important; box-shadow: 0 0 0 3px rgba(14,165,233,0.15) !important; }
+section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; border: none !important; color: #ffffff !important; border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; padding: 12px 16px !important; letter-spacing: 0.3px; transition: all 0.2s ease !important; box-shadow: 0 4px 12px rgba(14,165,233,0.25); }
+section[data-testid="stSidebar"] .stButton > button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(14,165,233,0.4) !important; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important; }
+section[data-testid="stSidebar"] hr { border-color: #e2e8f0 !important; margin: 20px 0 !important; }
 section[data-testid="stSidebar"] img { margin-bottom: 4px; }
 
 .small-updated {
@@ -351,19 +143,10 @@ section[data-testid="stSidebar"] img { margin-bottom: 4px; }
     padding: 12px 0 0 0;
     letter-spacing: 0.3px;
 }
-.small-updated strong {
-    color: #64748b;
-    font-weight: 600;
-}
+.small-updated strong { color: #64748b; font-weight: 600; }
 
-h1 {
-    font-size: 28px !important;
-    font-weight: 800 !important;
-    color: #0f172a !important;
-    letter-spacing: -0.5px;
-}
-button[kind="primary"],
-.stButton > button[kind="primary"] {
+h1 { font-size: 28px !important; font-weight: 800 !important; color: #0f172a !important; letter-spacing: -0.5px; }
+button[kind="primary"], .stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
     border-color: #0ea5e9 !important;
     color: #ffffff !important;
@@ -375,20 +158,26 @@ button[kind="primary"],
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"     # ← UPDATED
+EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
 
-COMPLIANCE_SHEETS = {
-    "SWPE": "SWPE",
-    "SWIN": "SWIN",
+COMPLIANCE_SHEETS_ATTEMPT = {
+    "SWPE": ["SWPE", "swpe", "Swpe", "SWPE ", " SWPE"],
+    "SWIN": ["SWIN", "swin", "Swin", "SWIN ", " SWIN"],
 }
 
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, EXCEL_FILE)
 
-# Column letters in Excel
 RC_COLUMN_LETTER = "H"
 
-# SharePoint search fallback
+DOC_CONFIG = {
+    "Insurance": {"expiry": "Insurance End Date",  "days": "Insurance Days Left", "col": "Q"},
+    "Fitness":   {"expiry": "Fitness Expiry Date", "days": "Fitness Days Left",   "col": "V"},
+    "MV Tax":    {"expiry": "MV Tax Expiry Date",  "days": "MV Tax Days Left",    "col": "AA"},
+    "Permit":    {"expiry": "Permit Expiry Date",  "days": "Permit Days Left",    "col": "AE"},
+    "TP":        {"expiry": "TP Expiry Date",      "days": "TP Days Left",        "col": "AL"},
+}
+
 SHAREPOINT_SEARCH_BASE = (
     "https://steelworkspower-my.sharepoint.com/personal/"
     "utkarsh_kashyap_steelworks_in/_layouts/15/onedrive.aspx?q="
@@ -409,8 +198,23 @@ if "search_query" not in st.session_state:
 
 
 # ==================================================
-# LAST UPDATED HELPER
+# AUTO-DETECT SHEET NAMES
 # ==================================================
+@st.cache_data(ttl=60)
+def get_actual_sheets():
+    if not os.path.exists(FILE_PATH):
+        return []
+    try:
+        with open(FILE_PATH, "rb") as f:
+            data = f.read()
+        wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True)
+        names = wb.sheetnames
+        wb.close()
+        return names
+    except Exception:
+        return []
+
+
 def get_last_updated():
     if not os.path.exists(FILE_PATH):
         return None
@@ -422,28 +226,22 @@ def get_last_updated():
 # LOAD HELPERS
 # ==================================================
 @st.cache_data(ttl=60)
-def load_sheet(sheet):
+def load_sheet(sheet_name):
     if not os.path.exists(FILE_PATH):
         st.error(f"❌ File not found: {FILE_PATH}")
-        st.info(f"📁 Files here: {os.listdir(BASE_DIR)}")
         st.stop()
 
     for attempt in range(3):
         try:
             with open(FILE_PATH, "rb") as f:
                 data = f.read()
-            df = pd.read_excel(
-                io.BytesIO(data),
-                sheet_name=sheet,
-                header=0,
-                engine="openpyxl",
-            )
+            df = pd.read_excel(io.BytesIO(data), sheet_name=sheet_name, header=0, engine="openpyxl")
             df.columns = df.columns.str.strip()
             return df
         except PermissionError:
             time.sleep(1)
         except Exception as e:
-            st.error(f"❌ Error reading sheet '{sheet}': {e}")
+            st.error(f"❌ Error reading sheet '{sheet_name}': {e}")
             st.stop()
 
     st.error("❌ File is locked. Close Excel and click Rerun.")
@@ -451,26 +249,35 @@ def load_sheet(sheet):
 
 
 @st.cache_data(ttl=60)
-def load_hyperlinks(sheet):
+def load_hyperlinks(sheet_name):
+    """Read links from: native hyperlinks, =HYPERLINK() formulas, and plain-text URLs."""
     if not os.path.exists(FILE_PATH):
         return {}
     try:
         with open(FILE_PATH, "rb") as f:
             data = f.read()
         wb = openpyxl.load_workbook(io.BytesIO(data), data_only=False)
-        ws = wb[sheet]
+        ws = wb[sheet_name]
 
         links = {}
         for row in ws.iter_rows():
             for cell in row:
                 url = None
-                if cell.hyperlink:
+
+                # 1. Native hyperlink (Ctrl+K)
+                if cell.hyperlink and cell.hyperlink.target:
                     url = cell.hyperlink.target
+
+                # 2. =HYPERLINK("url", ...) formula
                 elif isinstance(cell.value, str) and cell.value.upper().startswith("=HYPERLINK"):
-                    try:
-                        url = cell.value.split('"')[1]
-                    except Exception:
-                        pass
+                    m = re.match(r'=HYPERLINK\(\s*"([^"]+)"', cell.value, re.IGNORECASE)
+                    if m:
+                        url = m.group(1)
+
+                # 3. Plain text URL (starts with http:// or https://)
+                elif isinstance(cell.value, str) and cell.value.strip().lower().startswith(("http://", "https://")):
+                    url = cell.value.strip()
+
                 if url:
                     links.setdefault(cell.row, {})[cell.column_letter] = url
         return links
@@ -510,63 +317,40 @@ def status_icon(days):
     return "🟢 ACTIVE"
 
 
-# ==================================================
-# DOC CONFIG
-# ==================================================
-DOC_CONFIG = {
-    "Insurance": {
-        "expiry": "Insurance End Date",
-        "days":   "Insurance Days Left",
-        "link":   "Insurance Document Link",
-        "col":    "Q",
-    },
-    "Fitness": {
-        "expiry": "Fitness Expiry Date",
-        "days":   "Fitness Days Left",
-        "link":   "Fitness Document Link",
-        "col":    "V",
-    },
-    "MV Tax": {
-        "expiry": "MV Tax Expiry Date",
-        "days":   "MV Tax Days Left",
-        "link":   "MV Tax Document Link",
-        "col":    "AA",
-    },
-    "Permit": {
-        "expiry": "Permit Expiry Date",
-        "days":   "Permit Days Left",
-        "link":   "Permit Document Link",
-        "col":    "AE",
-    },
-    "TP": {
-        "expiry": "TP Expiry Date",
-        "days":   "TP Days Left",
-        "link":   "TP Document Link",
-        "col":    "AL",
-    },
-}
-
-
-# ==================================================
-# UNIVERSAL DOC URL RESOLVER
-# ==================================================
-def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col):
-    # 1. From pre-loaded hyperlinks
+def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, sheet_name=None):
+    """Resolve a document URL — tries cache, cell re-read (formula/plain/native), then SharePoint search."""
+    # 1. Pre-loaded cache
     url = hyperlinks.get(excel_row, {}).get(col_letter)
     if url:
         return url
 
-    # 2. Re-read fresh for native hyperlink
+    # 2. Re-read the exact cell
     try:
         with open(FILE_PATH, "rb") as f:
             _data = f.read()
         _wb = openpyxl.load_workbook(io.BytesIO(_data), data_only=False)
-        for _sheet_name in COMPLIANCE_SHEETS.values():
-            if _sheet_name in _wb.sheetnames:
-                _ws = _wb[_sheet_name]
-                cell = _ws[f"{col_letter}{excel_row}"]
-                if cell.hyperlink and cell.hyperlink.target:
-                    return cell.hyperlink.target
+
+        sheets_to_check = [sheet_name] if sheet_name else _wb.sheetnames
+
+        for sn in sheets_to_check:
+            if sn not in _wb.sheetnames:
+                continue
+            _ws = _wb[sn]
+            cell = _ws[f"{col_letter}{excel_row}"]
+
+            # Native
+            if cell.hyperlink and cell.hyperlink.target:
+                return cell.hyperlink.target
+
+            # Formula
+            if isinstance(cell.value, str) and cell.value.upper().startswith("=HYPERLINK"):
+                m = re.match(r'=HYPERLINK\(\s*"([^"]+)"', cell.value, re.IGNORECASE)
+                if m:
+                    return m.group(1)
+
+            # Plain text
+            if isinstance(cell.value, str) and cell.value.strip().lower().startswith(("http://", "https://")):
+                return cell.value.strip()
     except Exception:
         pass
 
@@ -579,7 +363,7 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col):
 
 
 # ==================================================
-# SIDEBAR — FILTERS + SEARCH
+# SIDEBAR
 # ==================================================
 with st.sidebar:
     logo_path = os.path.join(BASE_DIR, "SteelworksLogo.png")
@@ -589,20 +373,33 @@ with st.sidebar:
 
     st.markdown("### 🔍  Filters")
 
-    search_query = st.text_input(
-        "🔎 Search Vehicle",
-        value=st.session_state.search_query,
-        placeholder="Enter vehicle no. or name...",
-        key="search_input",
-    )
+    search_query = st.text_input("🔎 Search Vehicle",
+                                 value=st.session_state.search_query,
+                                 placeholder="Enter vehicle no. or name...",
+                                 key="search_input")
     st.session_state.search_query = search_query
 
     st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     entity = st.radio("Select Entity", ["SWPE", "SWIN"], horizontal=True, key="entity_filter")
 
-    df_all     = load_sheet(COMPLIANCE_SHEETS[entity])
-    hyperlinks = load_hyperlinks(COMPLIANCE_SHEETS[entity])
+    actual_sheets = get_actual_sheets()
+
+    real_sheet = None
+    for candidate in COMPLIANCE_SHEETS_ATTEMPT[entity]:
+        for s in actual_sheets:
+            if s.strip().upper() == candidate.strip().upper():
+                real_sheet = s
+                break
+        if real_sheet:
+            break
+
+    if real_sheet is None:
+        st.error(f"❌ Sheet '{entity}' not found in file.")
+        st.stop()
+
+    df_all     = load_sheet(real_sheet)
+    hyperlinks = load_hyperlinks(real_sheet)
 
     if search_query.strip():
         mask = (
@@ -625,7 +422,6 @@ with st.sidebar:
         df_all["_DaysLeft"] = clean_days_left(df_all[cfg["days"]])
 
     df_all["_DaysLeft"] = pd.to_numeric(df_all["_DaysLeft"], errors="coerce")
-
     df_all["_Year"]  = df_all["_Expiry"].dt.year
     df_all["_Month"] = df_all["_Expiry"].dt.month
 
@@ -643,26 +439,6 @@ with st.sidebar:
     if month != 0:
         df_filtered = df_filtered[df_filtered["_Month"] == month]
 
-    st.markdown(f"""
-    <div style="
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #bae6fd;
-        border-radius: 10px;
-        padding: 12px 16px;
-        margin-top: 12px;
-        text-align: center;
-    ">
-        <div style="font-size: 10px; color:#0369a1; text-transform:uppercase; letter-spacing:1px; font-weight:700;">
-            Results
-        </div>
-        <div style="font-size: 24px; color:#0284c7; font-weight:800; letter-spacing:-0.5px; margin-top:2px;">
-            {len(df_filtered)}
-        </div>
-        <div style="font-size: 11px; color:#64748b; margin-top:2px;">vehicles shown</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     st.divider()
 
     if st.button("🔄  Reset", use_container_width=True):
@@ -673,7 +449,6 @@ with st.sidebar:
         st.session_state.search_query      = ""
         st.rerun()
 
-    # ---- LAST UPDATED ----
     _dt = get_last_updated()
     if _dt is not None:
         st.markdown(
@@ -695,19 +470,8 @@ st.markdown(f"""
     margin-bottom: 20px;
     box-shadow: 0 4px 16px rgba(15,23,42,0.25);
 ">
-    <div style="
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 1.5px;
-        opacity: 0.7;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-    ">Fleet Compliance</div>
-    <div style="
-        font-size: 30px;
-        font-weight: 800;
-        letter-spacing: -0.8px;
-    ">{entity} Dashboard</div>
+    <div style="font-size: 12px; font-weight: 600; letter-spacing: 1.5px; opacity: 0.7; text-transform: uppercase; margin-bottom: 6px;">Fleet Compliance</div>
+    <div style="font-size: 30px; font-weight: 800; letter-spacing: -0.8px;">{entity} Dashboard</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -729,7 +493,7 @@ st.subheader(f"📋 {doc_type} Records")
 # MAIN TABLE
 # ==================================================
 if len(df_filtered) == 0:
-    st.warning("⚠️ No vehicles match the current filters. Try adjusting the search or filters.")
+    st.warning("⚠️ No vehicles match the current filters.")
     st.stop()
 
 VEH_COL  = df_filtered.columns[0]
@@ -775,10 +539,7 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
     vehicle   = df_filtered.iloc[idx]
     excel_row = idx + 2
 
-    @st.dialog(
-        f"🚛  {vehicle.get(NAME_COL, '')}  •  {vehicle[VEH_COL]}",
-        width="large",
-    )
+    @st.dialog(f"🚛  {vehicle.get(NAME_COL, '')}  •  {vehicle[VEH_COL]}", width="large")
     def show_vehicle_details():
 
         st.markdown(f"""
@@ -790,24 +551,9 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
             color: white;
             box-shadow: 0 4px 14px rgba(14,165,233,0.3);
         ">
-            <div style="
-                font-size: 11px;
-                font-weight: 600;
-                opacity: 0.85;
-                text-transform: uppercase;
-                letter-spacing: 1.2px;
-                margin-bottom: 4px;
-            ">Vehicle</div>
-            <div style="
-                font-size: 24px;
-                font-weight: 700;
-                letter-spacing: -0.5px;
-            ">{vehicle[VEH_COL]}</div>
-            <div style="
-                font-size: 14px;
-                opacity: 0.95;
-                margin-top: 4px;
-            ">{vehicle.get(NAME_COL, '')}</div>
+            <div style="font-size: 11px; font-weight: 600; opacity: 0.85; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 4px;">Vehicle</div>
+            <div style="font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">{vehicle[VEH_COL]}</div>
+            <div style="font-size: 14px; opacity: 0.95; margin-top: 4px;">{vehicle.get(NAME_COL, '')}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -816,16 +562,16 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
         with left:
             st.markdown("### 📝 Vehicle Details")
             info = [
-                ("RTO Location",           "RTO Location"),
-                ("Model No.",              "Model No."),
-                ("Chassis No.",            "Chassis No."),
-                ("Engine No",              "Engine No"),
-                ("Model Year",             "Model Year"),
-                ("Insurance Company",      "Insurance Company"),
-                ("Policy No.",             "Policy No."),
-                ("Insured Value (IDV)",    "Insured Value (IDV)"),
-                ("Insurance Amount",       "Insurance Amount"),
-                ("Fully Compliant Vehicle","Fully Compliant Vehicle"),
+                ("RTO Location", "RTO Location"),
+                ("Model No.", "Model No."),
+                ("Chassis No.", "Chassis No."),
+                ("Engine No", "Engine No"),
+                ("Model Year", "Model Year"),
+                ("Insurance Company", "Insurance Company"),
+                ("Policy No.", "Policy No."),
+                ("Insured Value (IDV)", "Insured Value (IDV)"),
+                ("Insurance Amount", "Insurance Amount"),
+                ("Fully Compliant Vehicle", "Fully Compliant Vehicle"),
             ]
             c1, c2 = st.columns(2)
             for i, (label, col) in enumerate(info):
@@ -842,41 +588,26 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
         with right:
             st.markdown("### 📄 Documents")
 
-            # ---------- RC ----------
-            rc_url = get_doc_url("RC", RC_COLUMN_LETTER, hyperlinks, excel_row, vehicle, VEH_COL)
+            # RC
+            rc_url = get_doc_url("RC", RC_COLUMN_LETTER, hyperlinks, excel_row, vehicle, VEH_COL, real_sheet)
             if rc_url:
                 st.link_button("📋   View RC", rc_url, use_container_width=True)
             else:
                 st.button("❌   RC — No file", disabled=True,
                           use_container_width=True, key=f"nodoc_rc_{idx}")
 
-            # ---------- All other documents ----------
+            # Other documents
             for doc_name, doc_cfg in DOC_CONFIG.items():
-                doc_url = get_doc_url(
-                    doc_name,
-                    doc_cfg["col"],
-                    hyperlinks,
-                    excel_row,
-                    vehicle,
-                    VEH_COL,
-                )
+                doc_url = get_doc_url(doc_name, doc_cfg["col"], hyperlinks, excel_row, vehicle, VEH_COL, real_sheet)
                 if doc_url:
-                    st.link_button(f"📄   View {doc_name}", doc_url,
-                                   use_container_width=True)
+                    st.link_button(f"📄   View {doc_name}", doc_url, use_container_width=True)
                 else:
                     st.button(f"❌   {doc_name} — No file",
-                              disabled=True,
-                              use_container_width=True,
+                              disabled=True, use_container_width=True,
                               key=f"nodoc_{doc_name}_{idx}")
 
         st.markdown("""
-        <div style="
-            text-align:center;
-            color:#94a3b8;
-            font-size:11px;
-            padding:16px 0 4px 0;
-            letter-spacing:0.3px;
-        ">
+        <div style="text-align:center; color:#94a3b8; font-size:11px; padding:16px 0 4px 0; letter-spacing:0.3px;">
             Click outside or press <b>ESC</b> to close
         </div>
         """, unsafe_allow_html=True)
@@ -907,14 +638,7 @@ else:
 # FOOTER
 # ==================================================
 st.markdown(f"""
-<div style="
-    text-align:center;
-    color:#94a3b8;
-    font-size:12px;
-    padding:16px 0 8px 0;
-    margin-top:12px;
-    border-top:1px solid #f1f5f9;
-">
+<div style="text-align:center; color:#94a3b8; font-size:12px; padding:16px 0 8px 0; margin-top:12px; border-top:1px solid #f1f5f9;">
     © {pd.Timestamp.now().year} Steelworks • Fleet Compliance System
 </div>
 """, unsafe_allow_html=True)

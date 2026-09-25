@@ -6,20 +6,44 @@ import io
 import time
 import datetime
 import warnings
+from pathlib import Path
 import openpyxl
 from openpyxl.utils import get_column_letter
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # ==================================================
-# PAGE CONFIG
+# LOGO + FAVICON SETUP
 # ==================================================
-st.set_page_config(
-    page_title="Fleet Compliance Dashboard",
-    page_icon="🚛",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_logo_path():
+    for name in ["logo.png", "Logo.png", "LOGO.png",
+                 "logo.webp", "SteelworksLogo.png", "SteelworksLogo.webp"]:
+        p = Path(BASE_DIR) / name
+        if p.exists():
+            return p
+    return None
+
+LOGO_PATH = get_logo_path()
+
+# ==================================================
+# PAGE CONFIG — use logo as favicon
+# ==================================================
+if LOGO_PATH:
+    st.set_page_config(
+        page_title="Fleet Compliance Dashboard",
+        page_icon=str(LOGO_PATH),
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+else:
+    st.set_page_config(
+        page_title="Fleet Compliance Dashboard",
+        page_icon="🚛",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
 
 # ==================================================
 # CSS
@@ -134,7 +158,7 @@ section[data-testid="stSidebar"] input[type="text"]:focus { border-color: #0ea5e
 section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; border: none !important; color: #ffffff !important; border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; padding: 12px 16px !important; letter-spacing: 0.3px; transition: all 0.2s ease !important; box-shadow: 0 4px 12px rgba(14,165,233,0.25); }
 section[data-testid="stSidebar"] .stButton > button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(14,165,233,0.4) !important; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important; }
 section[data-testid="stSidebar"] hr { border-color: #e2e8f0 !important; margin: 20px 0 !important; }
-section[data-testid="stSidebar"] img { margin-bottom: 4px; }
+section[data-testid="stSidebar"] img { margin-bottom: 8px; }
 
 .small-updated {
     text-align: left;
@@ -165,7 +189,6 @@ COMPLIANCE_SHEETS_ATTEMPT = {
     "SWIN": ["SWIN", "swin", "Swin", "SWIN ", " SWIN"],
 }
 
-BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, EXCEL_FILE)
 
 RC_COLUMN_LETTER = "H"
@@ -403,13 +426,13 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
 
 
 # ==================================================
-# SIDEBAR
+# SIDEBAR (with logo at top)
 # ==================================================
 with st.sidebar:
-    logo_path = os.path.join(BASE_DIR, "SteelworksLogo.png")
-    if os.path.exists(logo_path):
-        st.image(logo_path, use_container_width=True)
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    # ---- LOGO ONLY IN SIDEBAR ----
+    if LOGO_PATH:
+        st.image(str(LOGO_PATH), use_container_width=True)
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     st.markdown("### 🔍  Filters")
 
@@ -500,7 +523,7 @@ with st.sidebar:
 
 
 # ==================================================
-# HERO HEADER
+# HERO HEADER (no logo)
 # ==================================================
 st.markdown(f"""
 <div style="
@@ -561,7 +584,6 @@ else:
                     st.session_state.selected_month = (item["year"], item["month"])
                     st.rerun()
 
-    # ---------- Drill-down ----------
     if st.session_state.selected_month is not None:
         sel_year, sel_month = st.session_state.selected_month
         sel_data = next((m for m in monthly if m["year"] == sel_year and m["month"] == sel_month), None)
@@ -598,7 +620,7 @@ st.divider()
 
 
 # ==================================================
-# MAIN TABLE — Insurance Records / Fitness Records etc.
+# MAIN TABLE — with 🔍 View button per row
 # ==================================================
 st.subheader(f"📋 {doc_type} Records")
 
@@ -617,7 +639,6 @@ display_df.columns = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left"][
 display_df["Days Left"] = pd.to_numeric(display_df["Days Left"], errors="coerce")
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
 
-# Header
 header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 header_cols[0].markdown("**Vehicle No**")
 header_cols[1].markdown("**Vehicle Name**")
@@ -628,7 +649,6 @@ header_cols[5].markdown("**Action**")
 
 st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
 
-# Rows
 for i, row in display_df.iterrows():
     cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 
@@ -675,7 +695,6 @@ if st.session_state.dialog_open and st.session_state.dialog_vehicle is not None:
 
     vehicle = match_rows.iloc[0]
 
-    # Find excel row
     excel_row = None
     try:
         with open(FILE_PATH, "rb") as f:

@@ -263,21 +263,14 @@ def load_hyperlinks(sheet_name):
         for row in ws.iter_rows():
             for cell in row:
                 url = None
-
-                # 1. Native hyperlink (Ctrl+K)
                 if cell.hyperlink and cell.hyperlink.target:
                     url = cell.hyperlink.target
-
-                # 2. =HYPERLINK("url", ...) formula
                 elif isinstance(cell.value, str) and cell.value.upper().startswith("=HYPERLINK"):
                     m = re.match(r'=HYPERLINK\(\s*"([^"]+)"', cell.value, re.IGNORECASE)
                     if m:
                         url = m.group(1)
-
-                # 3. Plain text URL (starts with http:// or https://)
                 elif isinstance(cell.value, str) and cell.value.strip().lower().startswith(("http://", "https://")):
                     url = cell.value.strip()
-
                 if url:
                     links.setdefault(cell.row, {})[cell.column_letter] = url
         return links
@@ -318,13 +311,12 @@ def status_icon(days):
 
 
 def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, sheet_name=None):
-    """Resolve a document URL — tries cache, cell re-read (formula/plain/native), then SharePoint search."""
     # 1. Pre-loaded cache
     url = hyperlinks.get(excel_row, {}).get(col_letter)
     if url:
         return url
 
-    # 2. Re-read the exact cell
+    # 2. Re-read exact cell
     try:
         with open(FILE_PATH, "rb") as f:
             _data = f.read()
@@ -338,17 +330,14 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, 
             _ws = _wb[sn]
             cell = _ws[f"{col_letter}{excel_row}"]
 
-            # Native
             if cell.hyperlink and cell.hyperlink.target:
                 return cell.hyperlink.target
 
-            # Formula
             if isinstance(cell.value, str) and cell.value.upper().startswith("=HYPERLINK"):
                 m = re.match(r'=HYPERLINK\(\s*"([^"]+)"', cell.value, re.IGNORECASE)
                 if m:
                     return m.group(1)
 
-            # Plain text
             if isinstance(cell.value, str) and cell.value.strip().lower().startswith(("http://", "https://")):
                 return cell.value.strip()
     except Exception:
@@ -373,9 +362,9 @@ with st.sidebar:
 
     st.markdown("### 🔍  Filters")
 
-    search_query = st.text_input("🔎 Search Vehicle",
+    search_query = st.text_input("🔎 Search Anything",
                                  value=st.session_state.search_query,
-                                 placeholder="Enter vehicle no. or name...",
+                                 placeholder="Vehicle no., name, chassis, engine, policy...",
                                  key="search_input")
     st.session_state.search_query = search_query
 
@@ -401,10 +390,15 @@ with st.sidebar:
     df_all     = load_sheet(real_sheet)
     hyperlinks = load_hyperlinks(real_sheet)
 
+    # ==========================================
+    # FULL SEARCH — across ALL columns
+    # ==========================================
     if search_query.strip():
-        mask = (
-            df_all.iloc[:, 0].astype(str).str.contains(search_query, case=False, na=False) |
-            df_all.iloc[:, 1].astype(str).str.contains(search_query, case=False, na=False)
+        q = search_query.strip().lower()
+        # Search every cell of every row
+        mask = df_all.apply(
+            lambda row: q in " ".join(str(v).lower() for v in row.values if pd.notna(v)),
+            axis=1,
         )
         df_all = df_all[mask]
 
@@ -493,7 +487,7 @@ st.subheader(f"📋 {doc_type} Records")
 # MAIN TABLE
 # ==================================================
 if len(df_filtered) == 0:
-    st.warning("⚠️ No vehicles match the current filters.")
+    st.warning("⚠️ No vehicles match the current search or filters.")
     st.stop()
 
 VEH_COL  = df_filtered.columns[0]

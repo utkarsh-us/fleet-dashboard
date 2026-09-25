@@ -6,44 +6,20 @@ import io
 import time
 import datetime
 import warnings
-from pathlib import Path
 import openpyxl
 from openpyxl.utils import get_column_letter
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 # ==================================================
-# LOGO + FAVICON SETUP
+# PAGE CONFIG
 # ==================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def get_logo_path():
-    for name in ["logo.png", "Logo.png", "LOGO.png",
-                 "logo.webp", "SteelworksLogo.png", "SteelworksLogo.webp"]:
-        p = Path(BASE_DIR) / name
-        if p.exists():
-            return p
-    return None
-
-LOGO_PATH = get_logo_path()
-
-# ==================================================
-# PAGE CONFIG — use logo as favicon
-# ==================================================
-if LOGO_PATH:
-    st.set_page_config(
-        page_title="Fleet Compliance Dashboard",
-        page_icon=str(LOGO_PATH),
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
-else:
-    st.set_page_config(
-        page_title="Fleet Compliance Dashboard",
-        page_icon="🚛",
-        layout="wide",
-        initial_sidebar_state="expanded",
-    )
+st.set_page_config(
+    page_title="Fleet Compliance Dashboard",
+    page_icon="🚛",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # ==================================================
 # CSS
@@ -158,7 +134,6 @@ section[data-testid="stSidebar"] input[type="text"]:focus { border-color: #0ea5e
 section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important; border: none !important; color: #ffffff !important; border-radius: 10px !important; font-weight: 700 !important; font-size: 13px !important; padding: 12px 16px !important; letter-spacing: 0.3px; transition: all 0.2s ease !important; box-shadow: 0 4px 12px rgba(14,165,233,0.25); }
 section[data-testid="stSidebar"] .stButton > button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(14,165,233,0.4) !important; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important; }
 section[data-testid="stSidebar"] hr { border-color: #e2e8f0 !important; margin: 20px 0 !important; }
-section[data-testid="stSidebar"] img { margin-bottom: 8px; }
 
 .small-updated {
     text-align: left;
@@ -175,6 +150,26 @@ button[kind="primary"], .stButton > button[kind="primary"] {
     border-color: #0ea5e9 !important;
     color: #ffffff !important;
 }
+
+/* Compact View button for the last column */
+div[data-testid="stButton"] > button.view-btn {
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 4px 14px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    box-shadow: 0 2px 6px rgba(14,165,233,0.25) !important;
+    transition: all 0.15s ease !important;
+}
+div[data-testid="stButton"] > button.view-btn:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(14,165,233,0.4) !important;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -182,6 +177,8 @@ button[kind="primary"], .stButton > button[kind="primary"] {
 # ==================================================
 # CONFIG
 # ==================================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
 
 COMPLIANCE_SHEETS_ATTEMPT = {
@@ -426,14 +423,9 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
 
 
 # ==================================================
-# SIDEBAR (with logo at top)
+# SIDEBAR
 # ==================================================
 with st.sidebar:
-    # ---- LOGO ONLY IN SIDEBAR ----
-    if LOGO_PATH:
-        st.image(str(LOGO_PATH), use_container_width=True)
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-
     st.markdown("### 🔍  Filters")
 
     search_query = st.text_input("🔎 Search Anything",
@@ -523,7 +515,7 @@ with st.sidebar:
 
 
 # ==================================================
-# HERO HEADER (no logo)
+# HERO HEADER
 # ==================================================
 st.markdown(f"""
 <div style="
@@ -620,7 +612,7 @@ st.divider()
 
 
 # ==================================================
-# MAIN TABLE — with 🔍 View button per row
+# MAIN TABLE — with 🔍 View button in the last column
 # ==================================================
 st.subheader(f"📋 {doc_type} Records")
 
@@ -639,6 +631,7 @@ display_df.columns = ["Vehicle No", "Vehicle Name", "Expiry Date", "Days Left"][
 display_df["Days Left"] = pd.to_numeric(display_df["Days Left"], errors="coerce")
 display_df["Status"] = display_df["Days Left"].apply(status_icon)
 
+# Header
 header_cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 header_cols[0].markdown("**Vehicle No**")
 header_cols[1].markdown("**Vehicle Name**")
@@ -649,6 +642,7 @@ header_cols[5].markdown("**Action**")
 
 st.markdown("<hr style='margin:4px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
 
+# Rows — clean, compact, with 🔍 View button at end
 for i, row in display_df.iterrows():
     cols = st.columns([2.2, 3.5, 2.2, 1.5, 1.8, 1.2])
 
@@ -670,7 +664,7 @@ for i, row in display_df.iterrows():
 
     with cols[5]:
         btn_key = f"view_{entity}_{i}_{row['Vehicle No']}"
-        if st.button("🔍 View", key=btn_key, use_container_width=True):
+        if st.button("View", key=btn_key, use_container_width=True):
             st.session_state.dialog_vehicle = row["Vehicle No"]
             st.session_state.dialog_open    = True
             st.rerun()

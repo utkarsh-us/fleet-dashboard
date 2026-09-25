@@ -151,6 +151,61 @@ button[kind="primary"], .stButton > button[kind="primary"] {
     border-color: #0ea5e9 !important;
     color: #ffffff !important;
 }
+
+/* Monthly calendar cards */
+.month-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+.month-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
+    border-color: #bae6fd;
+}
+.month-card .month-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #0ea5e9;
+    display: inline-block;
+}
+.month-card .doc-pill {
+    display: inline-block;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #0369a1;
+    margin: 3px 4px 3px 0;
+}
+.month-card .doc-pill.red {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+.month-card .doc-pill.yellow {
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+}
+.month-card .total-badge {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 600;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -182,6 +237,9 @@ SHAREPOINT_SEARCH_BASE = (
     "https://steelworkspower-my.sharepoint.com/personal/"
     "utkarsh_kashyap_steelworks_in/_layouts/15/onedrive.aspx?q="
 )
+
+# ⚙️ How many days BEFORE expiry does the due date trigger?
+DUE_DATE_ADVANCE_DAYS = 10
 
 
 # ==================================================
@@ -250,7 +308,6 @@ def load_sheet(sheet_name):
 
 @st.cache_data(ttl=60)
 def load_hyperlinks(sheet_name):
-    """Read links from: native hyperlinks, =HYPERLINK() formulas, and plain-text URLs."""
     if not os.path.exists(FILE_PATH):
         return {}
     try:
@@ -311,12 +368,9 @@ def status_icon(days):
 
 
 def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, sheet_name=None):
-    # 1. Pre-loaded cache
     url = hyperlinks.get(excel_row, {}).get(col_letter)
     if url:
         return url
-
-    # 2. Re-read exact cell
     try:
         with open(FILE_PATH, "rb") as f:
             _data = f.read()
@@ -329,26 +383,74 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, 
                 continue
             _ws = _wb[sn]
             cell = _ws[f"{col_letter}{excel_row}"]
-
             if cell.hyperlink and cell.hyperlink.target:
                 return cell.hyperlink.target
-
             if isinstance(cell.value, str) and cell.value.upper().startswith("=HYPERLINK"):
                 m = re.match(r'=HYPERLINK\(\s*"([^"]+)"', cell.value, re.IGNORECASE)
                 if m:
                     return m.group(1)
-
             if isinstance(cell.value, str) and cell.value.strip().lower().startswith(("http://", "https://")):
                 return cell.value.strip()
     except Exception:
         pass
-
-    # 3. SharePoint search fallback
     try:
         veh_no = str(vehicle[veh_col]).strip().replace(" ", "%20")
         return f"{SHAREPOINT_SEARCH_BASE}{doc_label}%20{veh_no}"
     except Exception:
         return None
+
+
+# ==================================================
+# MONTHLY SUMMARY — BASED ON DUE DATE (Expiry - N days)
+# ==================================================
+def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAYS):
+    """
+    Group documents by their DUE DATE month.
+    Due date = Expiry date - advance_days.
+    """
+    today = pd.Timestamp.today().normalize()
+    cutoff = today + pd.DateOffset(months=months_ahead)
+
+    summary = {}
+
+    for doc_name, cfg in DOC_CONFIG.items():
+        col = cfg["expiry"]
+        if col not in df.columns:
+            continue
+
+        for _, row in df.iterrows():
+            val = row.get(col)
+            if pd.isna(val):
+                continue
+            try:
+                expiry = pd.to_datetime(val)
+            except Exception:
+                continue
+
+            due = expiry - pd.Timedelta(days=advance_days)
+
+            if due < today or due > cutoff:
+                continue
+
+            key = (due.year, due.month)
+            if key not in summary:
+                summary[key] = {
+                    "year": due.year,
+                    "month": due.month,
+                    "month_name": due.strftime("%B %Y"),
+                    "total": 0,
+                    "docs": {},
+                    "days_left_min": None,
+                }
+
+            summary[key]["total"] += 1
+            summary[key]["docs"][doc_name] = summary[key]["docs"].get(doc_name, 0) + 1
+
+            days_left = (due - today).days
+            if summary[key]["days_left_min"] is None or days_left < summary[key]["days_left_min"]:
+                summary[key]["days_left_min"] = days_left
+
+    return [summary[k] for k in sorted(summary.keys())]
 
 
 # ==================================================
@@ -390,12 +492,9 @@ with st.sidebar:
     df_all     = load_sheet(real_sheet)
     hyperlinks = load_hyperlinks(real_sheet)
 
-    # ==========================================
-    # FULL SEARCH — across ALL columns
-    # ==========================================
+    # FULL SEARCH
     if search_query.strip():
         q = search_query.strip().lower()
-        # Search every cell of every row
         mask = df_all.apply(
             lambda row: q in " ".join(str(v).lower() for v in row.values if pd.notna(v)),
             axis=1,
@@ -479,13 +578,66 @@ c2.metric("🟢 Active",        int((df_filtered["_DaysLeft"] > 30).sum()))
 c3.metric("🟡 Expiring Soon", int(((df_filtered["_DaysLeft"] >= 0) & (df_filtered["_DaysLeft"] <= 30)).sum()))
 c4.metric("🔴 Expired",       int((df_filtered["_DaysLeft"] < 0).sum()))
 
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-st.subheader(f"📋 {doc_type} Records")
+st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+
+
+# ==================================================
+# 📅 MONTHLY DUE DATE BREAKDOWN
+# ==================================================
+st.subheader("📅 Monthly Due Date Breakdown")
+st.caption(f"Due date = Expiry Date − {DUE_DATE_ADVANCE_DAYS} days · Action should start in the listed month")
+
+monthly = build_monthly_summary(df_all, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAYS)
+
+if not monthly:
+    st.info("No documents due in the next 12 months.")
+else:
+    cols_per_row = 3
+    for i in range(0, len(monthly), cols_per_row):
+        row_items = monthly[i:i + cols_per_row]
+        row_cols = st.columns(cols_per_row)
+
+        for col_widget, item in zip(row_cols, row_items):
+            with col_widget:
+                days = item["days_left_min"] if item["days_left_min"] is not None else 999
+
+                # Determine overall card urgency
+                if days < 0:
+                    urgent_class = "red"
+                elif days <= 30:
+                    urgent_class = "yellow"
+                else:
+                    urgent_class = ""
+
+                # Build doc pills
+                pills_html = ""
+                for doc_name, count in item["docs"].items():
+                    pill_class = ""
+                    if days <= 30:
+                        pill_class = "yellow"
+                    if days < 0:
+                        pill_class = "red"
+                    pills_html += f'<span class="doc-pill {pill_class}">{count} {doc_name}</span>'
+
+                st.markdown(f"""
+                <div class="month-card">
+                    <div class="month-name">
+                        {item['month_name']}
+                        <span class="total-badge">{item['total']} due</span>
+                    </div>
+                    <div>{pills_html}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+st.divider()
 
 
 # ==================================================
 # MAIN TABLE
 # ==================================================
+st.subheader(f"📋 {doc_type} Records")
+
 if len(df_filtered) == 0:
     st.warning("⚠️ No vehicles match the current search or filters.")
     st.stop()
@@ -582,7 +734,6 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
         with right:
             st.markdown("### 📄 Documents")
 
-            # RC
             rc_url = get_doc_url("RC", RC_COLUMN_LETTER, hyperlinks, excel_row, vehicle, VEH_COL, real_sheet)
             if rc_url:
                 st.link_button("📋   View RC", rc_url, use_container_width=True)
@@ -590,7 +741,6 @@ if st.session_state.dialog_open and st.session_state.dialog_row_idx is not None:
                 st.button("❌   RC — No file", disabled=True,
                           use_container_width=True, key=f"nodoc_rc_{idx}")
 
-            # Other documents
             for doc_name, doc_cfg in DOC_CONFIG.items():
                 doc_url = get_doc_url(doc_name, doc_cfg["col"], hyperlinks, excel_row, vehicle, VEH_COL, real_sheet)
                 if doc_url:

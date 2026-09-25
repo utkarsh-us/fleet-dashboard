@@ -152,59 +152,25 @@ button[kind="primary"], .stButton > button[kind="primary"] {
     color: #ffffff !important;
 }
 
-/* Monthly calendar cards */
-.month-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 16px 18px;
-    margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    transition: all 0.2s ease;
+/* Month card buttons */
+div[data-testid="stButton"] > button.month-card-btn {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+    color: #0f172a !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    padding: 16px 18px !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+    height: auto !important;
+    white-space: pre-wrap !important;
+    line-height: 1.6 !important;
 }
-.month-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(15,23,42,0.08);
-    border-color: #bae6fd;
-}
-.month-card .month-name {
-    font-size: 15px;
-    font-weight: 800;
-    color: #0f172a;
-    letter-spacing: -0.3px;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #0ea5e9;
-    display: inline-block;
-}
-.month-card .doc-pill {
-    display: inline-block;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #0369a1;
-    margin: 3px 4px 3px 0;
-}
-.month-card .doc-pill.red {
-    background: #fee2e2;
-    border-color: #fecaca;
-    color: #991b1b;
-}
-.month-card .doc-pill.yellow {
-    background: #fef3c7;
-    border-color: #fde68a;
-    color: #92400e;
-}
-.month-card .total-badge {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 600;
-    margin-left: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+div[data-testid="stButton"] > button.month-card-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 20px rgba(15,23,42,0.12) !important;
+    border-color: #0ea5e9 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -213,7 +179,7 @@ button[kind="primary"], .stButton > button[kind="primary"] {
 # ==================================================
 # CONFIG
 # ==================================================
-EXCEL_FILE = "Steelworks_Fleet_Compliance.xlsm"
+EXCEL_FILE = "data.xlsx"
 
 COMPLIANCE_SHEETS_ATTEMPT = {
     "SWPE": ["SWPE", "swpe", "Swpe", "SWPE ", " SWPE"],
@@ -238,7 +204,6 @@ SHAREPOINT_SEARCH_BASE = (
     "utkarsh_kashyap_steelworks_in/_layouts/15/onedrive.aspx?q="
 )
 
-# ⚙️ How many days BEFORE expiry does the due date trigger?
 DUE_DATE_ADVANCE_DAYS = 10
 
 
@@ -253,6 +218,8 @@ if "table_reset_counter" not in st.session_state:
     st.session_state.table_reset_counter = 0
 if "search_query" not in st.session_state:
     st.session_state.search_query = ""
+if "selected_month" not in st.session_state:
+    st.session_state.selected_month = None
 
 
 # ==================================================
@@ -401,13 +368,9 @@ def get_doc_url(doc_label, col_letter, hyperlinks, excel_row, vehicle, veh_col, 
 
 
 # ==================================================
-# MONTHLY SUMMARY — BASED ON DUE DATE (Expiry - N days)
+# MONTHLY SUMMARY — due date (expiry - N days)
 # ==================================================
 def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAYS):
-    """
-    Group documents by their DUE DATE month.
-    Due date = Expiry date - advance_days.
-    """
     today = pd.Timestamp.today().normalize()
     cutoff = today + pd.DateOffset(months=months_ahead)
 
@@ -428,7 +391,6 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
                 continue
 
             due = expiry - pd.Timedelta(days=advance_days)
-
             if due < today or due > cutoff:
                 continue
 
@@ -441,6 +403,7 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
                     "total": 0,
                     "docs": {},
                     "days_left_min": None,
+                    "items": [],
                 }
 
             summary[key]["total"] += 1
@@ -449,6 +412,16 @@ def build_monthly_summary(df, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAY
             days_left = (due - today).days
             if summary[key]["days_left_min"] is None or days_left < summary[key]["days_left_min"]:
                 summary[key]["days_left_min"] = days_left
+
+            # Collect per-item details for drill-down
+            summary[key]["items"].append({
+                "Vehicle No": row.get(df.columns[0], ""),
+                "Vehicle Name": row.get(df.columns[1], ""),
+                "Document": doc_name,
+                "Expiry Date": expiry,
+                "Due Date": due,
+                "Days Until Due": days_left,
+            })
 
     return [summary[k] for k in sorted(summary.keys())]
 
@@ -492,7 +465,6 @@ with st.sidebar:
     df_all     = load_sheet(real_sheet)
     hyperlinks = load_hyperlinks(real_sheet)
 
-    # FULL SEARCH
     if search_query.strip():
         q = search_query.strip().lower()
         mask = df_all.apply(
@@ -540,6 +512,7 @@ with st.sidebar:
         st.session_state.dialog_row_idx    = None
         st.session_state.table_reset_counter += 1
         st.session_state.search_query      = ""
+        st.session_state.selected_month    = None
         st.rerun()
 
     _dt = get_last_updated()
@@ -582,10 +555,10 @@ st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
 
 # ==================================================
-# 📅 MONTHLY DUE DATE BREAKDOWN
+# 📅 MONTHLY DUE DATE BREAKDOWN (clickable)
 # ==================================================
 st.subheader("📅 Monthly Due Date Breakdown")
-st.caption(f"Due date = Expiry Date − {DUE_DATE_ADVANCE_DAYS} days · Action should start in the listed month")
+st.caption(f"Due date = Expiry Date − {DUE_DATE_ADVANCE_DAYS} days · Click any month to see the vehicle list")
 
 monthly = build_monthly_summary(df_all, months_ahead=12, advance_days=DUE_DATE_ADVANCE_DAYS)
 
@@ -601,33 +574,58 @@ else:
             with col_widget:
                 days = item["days_left_min"] if item["days_left_min"] is not None else 999
 
-                # Determine overall card urgency
                 if days < 0:
-                    urgent_class = "red"
+                    icon = "🔴"
                 elif days <= 30:
-                    urgent_class = "yellow"
+                    icon = "🟡"
                 else:
-                    urgent_class = ""
+                    icon = "🟢"
 
-                # Build doc pills
-                pills_html = ""
-                for doc_name, count in item["docs"].items():
-                    pill_class = ""
-                    if days <= 30:
-                        pill_class = "yellow"
-                    if days < 0:
-                        pill_class = "red"
-                    pills_html += f'<span class="doc-pill {pill_class}">{count} {doc_name}</span>'
+                # Build doc pills text
+                pills_text = " · ".join(f"{count} {doc}" for doc, count in item["docs"].items())
 
-                st.markdown(f"""
-                <div class="month-card">
-                    <div class="month-name">
-                        {item['month_name']}
-                        <span class="total-badge">{item['total']} due</span>
-                    </div>
-                    <div>{pills_html}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                btn_label = f"{icon}  {item['month_name']}   ({item['total']})\n{pills_text}"
+
+                key = f"month_{item['year']}_{item['month']}"
+                if st.button(btn_label, key=key, use_container_width=True):
+                    st.session_state.selected_month = (item["year"], item["month"])
+                    st.rerun()
+
+    # ---------- Drill-down for the selected month ----------
+    if st.session_state.selected_month is not None:
+        sel_year, sel_month = st.session_state.selected_month
+
+        sel_data = next(
+            (m for m in monthly if m["year"] == sel_year and m["month"] == sel_month),
+            None,
+        )
+
+        if sel_data:
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            st.markdown(f"### 📋 Vehicles due in {sel_data['month_name']}")
+
+            colA, colB = st.columns([4, 1])
+            with colB:
+                if st.button("✖  Close", key="close_month", use_container_width=True):
+                    st.session_state.selected_month = None
+                    st.rerun()
+
+            items_df = pd.DataFrame(sel_data["items"])
+            if not items_df.empty:
+                items_df["Expiry Date"] = pd.to_datetime(items_df["Expiry Date"]).dt.strftime("%d-%b-%Y")
+                items_df["Due Date"]    = pd.to_datetime(items_df["Due Date"]).dt.strftime("%d-%b-%Y")
+
+                items_df = items_df[["Vehicle No", "Vehicle Name", "Document",
+                                     "Expiry Date", "Due Date", "Days Until Due"]]
+
+                st.dataframe(
+                    items_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Days Until Due": st.column_config.NumberColumn("Days Until Due", format="%d"),
+                    },
+                )
 
 st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 st.divider()

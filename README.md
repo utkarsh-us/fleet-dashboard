@@ -37,5 +37,3 @@ A modern, interactive Streamlit dashboard for tracking fleet document compliance
 6. In the popup, click **📄 View [Document]** to open the PDF in a new tab
 
 ---
-
-## 📁 Project Structure
